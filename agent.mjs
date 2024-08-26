@@ -1,3 +1,4 @@
+import WebSocket from 'ws';
 import {
   bytesToBase64,
   base64ToBytes,
@@ -180,8 +181,8 @@ const Agent = class {
           });
         }
       };
-      connection.addEventListener("open", handshaker);
-      connection.addEventListener("close", closer);
+      connection.on('open', handshaker);
+      connection.on('close', closer);
     });
   }
   get connection() {

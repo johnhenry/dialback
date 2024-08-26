@@ -1,10 +1,12 @@
 {
-  "name": "proxy-socks",
-  "version": "0.0.3",
+  "name": "leproxy",
+  "version": "0.0.1",
   "description": "Reverse proxy HTTP requests over web sockets",
   "main": "index.mjs",
+  "type": "module",
   "scripts": {
-    "test": "npm run test"
+    "test": "node test.mjs",
+    "start": "node server.mjs"
   },
   "repository": {
     "type": "git",
@@ -25,5 +27,11 @@
   "bugs": {
     "url": "https://github.com/johnhenry/proxy-socks/issues"
   },
-  "homepage": "https://github.com/johnhenry/proxy-socks#readme"
+  "homepage": "https://github.com/johnhenry/proxy-socks#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
 }
