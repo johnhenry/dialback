@@ -4,8 +4,9 @@
   "description": "Reverse proxy HTTP requests over web sockets",
   "main": "index.mjs",
   "type": "module",
+  "types": "types/types.dts",
   "scripts": {
-    "test": "node test.mjs",
+    "test": "node --test test/node.test.mjs",
     "start": "node server.mjs"
   },
   "repository": {
