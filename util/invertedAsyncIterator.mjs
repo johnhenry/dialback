@@ -1,7 +1,9 @@
 import { invertedPromise } from "./invertedPromise.mjs";
 
+/** @type {symbol} */
 const KILLED = Symbol.for("KILLED_INVERTED_ASYNC_ITERATOR");
 
+/** @type {import('../types/types').bufferOverRunStrategies} */
 const bufferOverRunStrategies = {
   ERROR: "error",
   DROP: "drop",
@@ -9,10 +11,22 @@ const bufferOverRunStrategies = {
   DIE: "die",
 };
 
+/** @type {Set<import('../types/types').BufferOverRunStrategy>} */
 const bufferOverRunStrategiesValuesSet = new Set(
   Object.values(bufferOverRunStrategies)
 );
 
+/**
+ * @template T
+ * @param {number} [bufferSize]
+ * @param {import('../types/types').BufferOverRunStrategy} [bufferOverrunStrategy]
+ * @returns {[
+ *   () => AsyncGenerator<T, void, unknown>,
+ *   (data: T) => T,
+ *   () => void,
+ *   () => T | undefined
+ * ]}
+ */
 const invertedAsyncIterator = (
   bufferSize = -1,
   bufferOverrunStrategy = bufferOverRunStrategies.ERROR
@@ -20,9 +34,13 @@ const invertedAsyncIterator = (
   if (!bufferOverRunStrategiesValuesSet.has(bufferOverrunStrategy)) {
     throw new Error(`Invalid bufferOverrunStrategy: ${bufferOverrunStrategy}`);
   }
+  /** @type {T[]} */
   let buffer = [];
   let killed = false;
-  let promise, resolve;
+  /** @type {Promise<T> | undefined} */
+  let promise;
+  /** @type {((value: T) => void) | undefined} */
+  let resolve;
   const generator = async function* () {
     while (!killed) {
       if (buffer.length) {

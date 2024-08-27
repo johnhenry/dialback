@@ -5,11 +5,21 @@ export {
   bufferOverRunStrategies,
 } from "./invertedAsyncIterator.mjs";
 
+/**
+ * @template T
+ * @returns {{ promise: Promise<T>, resolve: (value: T) => void, reject: (reason?: any) => void }}
+ */
 const withResolvers = () => {
   const [promise, resolve, reject] = invertedPromise();
   return { promise, resolve, reject };
 };
 
+/**
+ * @template T
+ * @param {number} [ms]
+ * @param {{ value?: T, signal?: AbortSignal }} [options]
+ * @returns {Promise<T>}
+ */
 const resolveAfter = (
   ms = undefined,
   { value = undefined, signal = undefined } = {}

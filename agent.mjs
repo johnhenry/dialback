@@ -6,6 +6,7 @@ import {
   randId,
 } from "./util/index.mjs";
 
+/** @type {import('./types/types').LOG_LEVELS} */
 const LOG_LEVELS = {
   NONE: 0,
   ERROR: 1,
@@ -14,17 +15,36 @@ const LOG_LEVELS = {
   DEBUG: 4,
 };
 
+/**
+ * @class
+ * @implements {import('./types/types').Agent}
+ */
 const Agent = class {
+  /** @type {Promise<import('./types/types').Connection> | null} */
   #connection = null;
+  /** @type {string | null} */
   #id = null;
+  /** @type {Map<string, any>} */
   #sessions = null;
+  /** @type {(data: any) => void} */
   #send = null;
+  /** @type {AsyncGenerator<any, void, unknown>} */
   #recieve = null;
+  /** @type {number | undefined} */
   #reconnect = undefined;
+  /** @type {(handler: (request: Request, options: { id: string }) => Promise<Response>) => void} */
   #boundServe = (handler) => {};
+  /** @type {number} */
   #log = 0;
+  /** @type {() => Response} */
   #abort = () => {};
+  /** @type {(request: Request, options: { id: string }) => Promise<Response>} */
   #handler = () => new Response("empty responder", { status: 500 });
+
+  /**
+   * @param {string} address
+   * @param {import('./types/types').AgentOptions} options
+   */
   constructor(
     address,
     { reconnect, log, abort, secret } = {
@@ -45,6 +65,12 @@ const Agent = class {
     this.#connection = this.createConnection(address, secret);
     this.#boundServe = this.unboundServe.bind(this);
   }
+
+  /**
+   * @param {string} address
+   * @param {string | undefined} secret
+   * @returns {Promise<import('./types/types').Connection>}
+   */
   createConnection(address, secret) {
     return new Promise((success) => {
       const connection = new WebSocket(address);
@@ -185,20 +211,38 @@ const Agent = class {
       connection.on('close', closer);
     });
   }
+
+  /**
+   * @returns {Promise<import('./types/types').Connection>}
+   */
   get connection() {
     return this.#connection;
   }
+
+  /**
+   * @param {(request: Request, options: { id: string }) => Promise<Response>} handler
+   */
   unboundServe(handler) {
     this.#handler = handler;
   }
+
+  /**
+   * @returns {(handler: (request: Request, options: { id: string }) => Promise<Response>) => void}
+   */
   get serve() {
     return this.#boundServe;
   }
 };
 
+/**
+ * @param {Request} req
+ * @returns {Response}
+ */
 const upgradeWebSocket = (req) => {
   const response = new Response(null, { websocket: true });
+  return response;
 };
+
 export { Agent, upgradeWebSocket, LOG_LEVELS };
 
 export default Agent;

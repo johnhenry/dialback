@@ -1,5 +1,14 @@
 import { invertedAsyncIterator } from "./index.mjs";
 
+/**
+ * @param {import('../types/types.d.ts').Connection} connection
+ * @param {import('../types/types.d.ts').ConnectionOptions} options
+ * @returns {[
+ *   (data: any) => void,
+ *   AsyncGenerator<any, void, unknown>,
+ *   () => void
+ * ]}
+ */
 const doConnection = (
   connection,
   {

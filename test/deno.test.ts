@@ -1,17 +1,25 @@
 import { assertEquals, assertRejects } from "https://deno.land/std/testing/asserts.ts";
-import { createServer } from '../server.mjs';
-import { createAgent } from '../agent.mjs';
+import { Server } from '../server.mjs';
+import { Agent } from '../agent.mjs';
 import { invertedAsyncIterator } from '../util/invertedAsyncIterator.mjs';
 import { invertedPromise } from '../util/invertedPromise.mjs';
 
-Deno.test("createServer", async () => {
-  const server = await createServer();
+Deno.test("Server", () => {
+  const defaultHandler = () => new Response("default handler", { status: 404 });
+  const server = new Server(defaultHandler);
   assertEquals(typeof server, "object", "Server should be created");
   // Add more specific tests for server functionality
 });
 
-Deno.test("createAgent", async () => {
-  const agent = await createAgent();
+Deno.test("Agent", () => {
+  const address = "ws://localhost:8080";
+  const options = {
+    reconnect: 1000,
+    log: 2,
+    abort: () => new Response("aborted", { status: 500 }),
+    secret: "test-secret"
+  };
+  const agent = new Agent(address, options);
   assertEquals(typeof agent, "object", "Agent should be created");
   // Add more specific tests for agent functionality
 });
