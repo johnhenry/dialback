@@ -1,4 +1,5 @@
-import WebSocket from 'ws';
+import WebSocket from "ws";
+import EventEmitter from "node:events";
 import {
   bytesToBase64,
   base64ToBytes,
@@ -19,7 +20,7 @@ const LOG_LEVELS = {
  * @class
  * @implements {import('./types/types').Agent}
  */
-const Agent = class {
+const Agent = class extends EventEmitter {
   /** @type {Promise<import('./types/types').Connection> | null} */
   #connection = null;
   /** @type {string | null} */
@@ -54,6 +55,7 @@ const Agent = class {
       secret: undefined,
     }
   ) {
+    super();
     this.#log = log;
     this.#reconnect = reconnect;
     this.#id = randId("agent-");
@@ -207,8 +209,8 @@ const Agent = class {
           });
         }
       };
-      connection.on('open', handshaker);
-      connection.on('close', closer);
+      connection.on("open", handshaker);
+      connection.on("close", closer);
     });
   }
 
@@ -231,6 +233,18 @@ const Agent = class {
    */
   get serve() {
     return this.#boundServe;
+  }
+
+  /**
+   * Close the WebSocket connection and emit a 'close' event
+   */
+  async close() {
+    if (this.#connection) {
+      const connection = await this.#connection;
+      connection.close();
+      this.#connection = null;
+      this.emit("close");
+    }
   }
 };
 

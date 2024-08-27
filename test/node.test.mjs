@@ -1,50 +1,77 @@
+//node.test.mjs
+
 import { test } from "node:test";
 import assert from "node:assert";
 import { Agent, Server } from "../index.mjs";
-import { invertedAsyncIterator } from "../util/invertedAsyncIterator.mjs";
-import { invertedPromise } from "../util/invertedPromise.mjs";
+import {
+  invertedAsyncIterator,
+  KILLED,
+} from "../util/invertedAsyncIterator.mjs";
+import EventEmitter from "node:events";
 
-test("createServer", async (t) => {
+// Mock WebSocket class
+class MockWebSocket extends EventEmitter {
+  constructor(url) {
+    super();
+    this.url = url;
+    this.readyState = MockWebSocket.OPEN;
+    setTimeout(() => this.emit("open"), 0);
+  }
+
+  close() {
+    this.readyState = MockWebSocket.CLOSED;
+    this.emit("close");
+  }
+
+  static OPEN = 1;
+  static CLOSED = 3;
+}
+
+// Override the WebSocket import in the Agent class
+import * as agentModule from "../agent.mjs";
+agentModule.default.prototype.createConnection = function (address, secret) {
+  return Promise.resolve(new MockWebSocket(address));
+};
+
+test("Server", async (t) => {
   const server = new Server();
   assert.ok(server, "Server should be created");
-  // Add more specific tests for server functionality
 });
 
-test("createAgent", async (t) => {
-  const agent = new Agent();
+test("Agent", async (t) => {
+  const agent = new Agent("ws://localhost:8080"); // Provide a dummy URL
   assert.ok(agent, "Agent should be created");
-  // Add more specific tests for agent functionality
+
+  // Close the agent to prevent any lingering connections
+  await new Promise((resolve) => {
+    agent.on("close", resolve);
+    agent.close();
+  });
 });
 
 test("invertedAsyncIterator", async (t) => {
-  const asyncIterable = {
-    async *[Symbol.asyncIterator]() {
-      yield 1;
-      yield 2;
-      yield 3;
-    },
-  };
+  const [generator, enqueue, toggle] = invertedAsyncIterator();
 
-  const inverted = invertedAsyncIterator(asyncIterable);
+  // Enqueue items in normal order
+  enqueue(1);
+  enqueue(2);
+  enqueue(3);
+
   const result = [];
-  for await (const item of inverted) {
-    result.push(item);
+  try {
+    for await (const item of generator()) {
+      result.push(item);
+      if (result.length === 3) {
+        toggle(); // End the iterator after we've received all items
+      }
+    }
+  } catch (error) {
+    assert.strictEqual(error, KILLED, "Iterator should be killed after toggle");
   }
 
   assert.deepStrictEqual(
     result,
-    [3, 2, 1],
-    "Inverted async iterator should reverse the order"
-  );
-});
-
-test("invertedPromise", async (t) => {
-  const promise = Promise.resolve("test");
-  const inverted = invertedPromise(promise);
-
-  assert.rejects(
-    inverted,
-    "test",
-    "Inverted promise should reject with the resolved value"
+    [1, 2, 3],
+    "Inverted async iterator should maintain the order of enqueued items"
   );
 });

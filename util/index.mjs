@@ -1,5 +1,5 @@
 export { doConnection } from "./connection.mjs";
-export { invertedPromise, invertedAsyncIterator } from "./PromisesPlus.mjs";
+export { invertedAsyncIterator } from "./PromisesPlus.mjs";
 export { routeEmptyFavicon } from "./routeEmptyFavicon.mjs";
 // https://developer.mozilla.org/en-US/docs/Glossary/Base64
 

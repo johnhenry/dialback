@@ -1,6 +1,12 @@
 // Type definitions for leproxy
 
-export type ServerStrategy = 'first' | 'last-used' | 'random' | 'round-robin' | 'most-recent' | 'last';
+export type ServerStrategy =
+  | "first"
+  | "last-used"
+  | "random"
+  | "round-robin"
+  | "most-recent"
+  | "last";
 
 export interface ServerOptions {
   strategy?: ServerStrategy;
@@ -28,7 +34,7 @@ export interface ConnectionOptions {
   showRecieved?: boolean;
 }
 
-export type BufferOverRunStrategy = 'error' | 'drop' | 'shift' | 'die';
+export type BufferOverRunStrategy = "error" | "drop" | "shift" | "die";
 
 export interface InvertedAsyncIteratorOptions {
   bufferSize?: number;
@@ -43,25 +49,33 @@ export interface Server {
   getConnectionById(id: string): Connection | undefined;
   getConnectionByIndex(index: number): Connection | undefined;
   setStrategy(newStrategy: ServerStrategy): void;
-  fetch(request: Request | string, options?: RequestInit, moreOptions?: any): Promise<Response>;
+  fetch(
+    request: Request | string,
+    options?: RequestInit,
+    moreOptions?: any
+  ): Promise<Response>;
 }
 
 export interface Agent {
   connection: Promise<Connection>;
-  serve(handler: (request: Request, options: { id: string }) => Promise<Response>): void;
+  serve(
+    handler: (request: Request, options: { id: string }) => Promise<Response>
+  ): void;
 }
 
-export declare function createServer(defaultHandler?: () => Response, options?: ServerOptions): Server;
-export declare function createAgent(address: string, options?: AgentOptions): Agent;
+export declare function createServer(
+  defaultHandler?: () => Response,
+  options?: ServerOptions
+): Server;
+export declare function createAgent(
+  address: string,
+  options?: AgentOptions
+): Agent;
 
 export declare function doConnection(
   connection: Connection,
   options?: ConnectionOptions
-): [
-  (data: any) => void,
-  AsyncGenerator<any, void, unknown>,
-  () => void
-];
+): [(data: any) => void, AsyncGenerator<any, void, unknown>, () => void];
 
 export declare function invertedAsyncIterator(
   bufferSize?: number,
@@ -72,8 +86,6 @@ export declare function invertedAsyncIterator(
   () => void,
   () => any
 ];
-
-export declare function invertedPromise<T>(): [Promise<T>, (value: T) => void, (reason?: any) => void];
 
 export declare function withResolvers<T>(): {
   promise: Promise<T>;
@@ -89,10 +101,10 @@ export declare function resolveAfter<T>(
 // Constants
 export declare const KILLED: unique symbol;
 export declare const bufferOverRunStrategies: {
-  ERROR: 'error';
-  DROP: 'drop';
-  SHIFT: 'shift';
-  DIE: 'die';
+  ERROR: "error";
+  DROP: "drop";
+  SHIFT: "shift";
+  DIE: "die";
 };
 export declare const LOG_LEVELS: {
   NONE: 0;

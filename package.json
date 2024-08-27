@@ -6,7 +6,10 @@
   "type": "module",
   "types": "types/types.dts",
   "scripts": {
-    "test": "node --test test/node.test.mjs",
+    "test:node": "node --test test/node.test.mjs",
+    "test:deno": "deno test test/deno.test.ts",
+    "test:all": "node --run test:node && node --run test:deno ",
+    "test": "node --run test:node",
     "start": "node server.mjs"
   },
   "repository": {

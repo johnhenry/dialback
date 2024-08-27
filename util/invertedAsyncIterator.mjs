@@ -1,5 +1,3 @@
-import { invertedPromise } from "./invertedPromise.mjs";
-
 /** @type {symbol} */
 const KILLED = Symbol.for("KILLED_INVERTED_ASYNC_ITERATOR");
 
@@ -46,7 +44,7 @@ const invertedAsyncIterator = (
       if (buffer.length) {
         yield buffer.shift();
       } else {
-        [promise, resolve] = invertedPromise();
+        ({ promise, resolve } = Promise.withResolvers());
         yield await promise;
       }
     }

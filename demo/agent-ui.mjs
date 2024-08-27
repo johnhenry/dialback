@@ -1,5 +1,5 @@
 import { Agent } from "../index.mjs";
-import { invertedPromise, routeEmptyFavicon } from "../util/index.mjs";
+import { routeEmptyFavicon } from "../util/index.mjs";
 const address = `http://localhost:8082`;
 let response, setResponse;
 
@@ -15,7 +15,7 @@ serve(async (request, { id }) => {
       ({ name } = await request.json());
     } catch {}
 
-    [response, setResponse] = invertedPromise();
+    ({ promise: response, resolve: setResponse } = Promise.withResolvers());
     setTimeout(() => {
       setResponse(
         new Response(`Hello there ${name}.`, {
@@ -37,7 +37,7 @@ serve(async (request, { id }) => {
 //   try {
 //     const { url, method, headers } = request;
 //     const text = await request.text();
-//     [response, setResponse] = invertedPromise();
+//     [response, setResponse] = Promise.withResolvers();
 //     return response;
 //   } catch (e) {
 //     console.log(e);

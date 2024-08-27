@@ -1,55 +1,85 @@
-import { assertEquals, assertRejects } from "https://deno.land/std/testing/asserts.ts";
-import { Server } from '../server.mjs';
-import { Agent } from '../agent.mjs';
-import { invertedAsyncIterator } from '../util/invertedAsyncIterator.mjs';
-import { invertedPromise } from '../util/invertedPromise.mjs';
+// deno.test.ts
 
-Deno.test("Server", () => {
-  const defaultHandler = () => new Response("default handler", { status: 404 });
-  const server = new Server(defaultHandler);
-  assertEquals(typeof server, "object", "Server should be created");
-  // Add more specific tests for server functionality
-});
-
-Deno.test("Agent", () => {
-  const address = "ws://localhost:8080";
-  const options = {
-    reconnect: 1000,
-    log: 2,
-    abort: () => new Response("aborted", { status: 500 }),
-    secret: "test-secret"
-  };
-  const agent = new Agent(address, options);
-  assertEquals(typeof agent, "object", "Agent should be created");
-  // Add more specific tests for agent functionality
-});
-
-Deno.test("invertedAsyncIterator", async () => {
-  const asyncIterable = {
-    async *[Symbol.asyncIterator]() {
-      yield 1;
-      yield 2;
-      yield 3;
-    }
-  };
-
-  const inverted = invertedAsyncIterator(asyncIterable);
-  const result = [];
-  for await (const item of inverted) {
-    result.push(item);
+import { assertEquals } from "jsr:@std/assert@1";
+import { Server } from "../server.mjs";
+import { Agent } from "../agent.mjs";
+import {
+  invertedAsyncIterator,
+  KILLED,
+} from "../util/invertedAsyncIterator.mjs";
+// Mock WebSocket class
+class MockWebSocket extends EventTarget {
+  constructor(url: string) {
+    super();
+    this.url = url;
+    this.readyState = MockWebSocket.OPEN;
+    setTimeout(() => this.dispatchEvent(new Event("open")), 0);
   }
 
-  assertEquals(result, [3, 2, 1], "Inverted async iterator should reverse the order");
+  url: string;
+  readyState: number;
+
+  close() {
+    this.readyState = MockWebSocket.CLOSED;
+    this.dispatchEvent(new Event("close"));
+  }
+
+  static OPEN = 1;
+  static CLOSED = 3;
+}
+
+// Override the WebSocket import in the Agent class
+// Note: This might need adjustment based on how Deno handles imports
+(Agent.prototype as any).createConnection = function (
+  address: string,
+  secret: string
+) {
+  return Promise.resolve(new MockWebSocket(address));
+};
+
+Deno.test("Server", async () => {
+  const server = new Server();
+  assertEquals(typeof server, "object", "Server should be created");
 });
 
-Deno.test("invertedPromise", async () => {
-  const promise = Promise.resolve("test");
-  const inverted = invertedPromise(promise);
+Deno.test(
+  "Agent",
+  { sanitizeResources: false, sanitizeOps: false },
+  async () => {
+    const agent = new Agent("ws://localhost:8080"); // Provide a dummy URL
+    assertEquals(typeof agent, "object", "Agent should be created");
+    agent.emit("close", new Event("close")); // Simulate the WebSocket connection
+    // Close the agent to prevent any lingering connections
+    await new Promise<void>((resolve) => {
+      agent.on("close", () => resolve());
+      agent.close();
+    });
+  }
+);
 
-  await assertRejects(
-    () => inverted,
-    Error,
-    "test",
-    "Inverted promise should reject with the resolved value"
+Deno.test("invertedAsyncIterator", async () => {
+  const [generator, enqueue, toggle] = invertedAsyncIterator();
+
+  // Enqueue items in normal order
+  enqueue(1);
+  enqueue(2);
+  enqueue(3);
+
+  const result = [];
+  try {
+    for await (const item of generator()) {
+      result.push(item);
+      if (result.length === 3) {
+        toggle(); // End the iterator after we've received all items
+      }
+    }
+  } catch (error) {
+    assertEquals(error, KILLED, "Iterator should be killed after toggle");
+  }
+
+  assertEquals(
+    result,
+    [1, 2, 3],
+    "Inverted async iterator should maintain the order of enqueued items"
   );
 });

@@ -1,4 +1,3 @@
-export { invertedPromise } from "./invertedPromise.mjs";
 export {
   KILLED,
   invertedAsyncIterator,
@@ -10,8 +9,7 @@ export {
  * @returns {{ promise: Promise<T>, resolve: (value: T) => void, reject: (reason?: any) => void }}
  */
 const withResolvers = () => {
-  const [promise, resolve, reject] = invertedPromise();
-  return { promise, resolve, reject };
+  return Promise.withResolvers();
 };
 
 /**
