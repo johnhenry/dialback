@@ -21,13 +21,24 @@ test("Integration tests", async (t) => {
 
   await t.test("Agent can connect to Server", async (t) => {
     const connection = await agent.connection;
-    assert.ok(connection instanceof WebSocket, "Agent should connect to the server");
-    assert.strictEqual(connection.readyState, WebSocket.OPEN, "Connection should be open");
+    assert.ok(
+      connection instanceof WebSocket,
+      "Agent should connect to the server"
+    );
+    assert.strictEqual(
+      connection.readyState,
+      WebSocket.OPEN,
+      "Connection should be open"
+    );
   });
 
   await t.test("Server can handle requests through Agent", async (t) => {
     const testHandler = async (request, options) => {
-      assert.strictEqual(request.url, "http://test.com", "Request URL should match");
+      assert.strictEqual(
+        request.url,
+        "http://test.com",
+        "Request URL should match"
+      );
       assert.strictEqual(request.method, "GET", "Request method should match");
       return new Response("Test response", { status: 200 });
     };
@@ -57,7 +68,11 @@ test("Integration tests", async (t) => {
     });
 
     assert.strictEqual(response.status, 200, "Response status should be 200");
-    assert.strictEqual(response.data, "Test response", "Response data should match");
+    assert.strictEqual(
+      response.data,
+      "Test response",
+      "Response data should match"
+    );
   });
 
   await t.test("Server can handle multiple concurrent requests", async (t) => {
@@ -101,11 +116,27 @@ test("Integration tests", async (t) => {
 
     assert.strictEqual(responses.length, 3, "Should receive 3 responses");
     responses.forEach((response, index) => {
-      assert.strictEqual(response.status, 200, `Response ${index + 1} status should be 200`);
+      assert.strictEqual(
+        response.status,
+        200,
+        `Response ${index + 1} status should be 200`
+      );
     });
-    assert.strictEqual(responses[0].data, "Response after 100ms", "First response should be correct");
-    assert.strictEqual(responses[1].data, "Response after 50ms", "Second response should be correct");
-    assert.strictEqual(responses[2].data, "Response after 150ms", "Third response should be correct");
+    assert.strictEqual(
+      responses[0].data,
+      "Response after 100ms",
+      "First response should be correct"
+    );
+    assert.strictEqual(
+      responses[1].data,
+      "Response after 50ms",
+      "Second response should be correct"
+    );
+    assert.strictEqual(
+      responses[2].data,
+      "Response after 150ms",
+      "Third response should be correct"
+    );
   });
 
   await t.test("Server and Agent can handle large payload", async (t) => {
@@ -113,7 +144,11 @@ test("Integration tests", async (t) => {
 
     const testHandler = async (request, options) => {
       const body = await request.text();
-      assert.strictEqual(body.length, largePayload.length, "Request body should match large payload size");
+      assert.strictEqual(
+        body.length,
+        largePayload.length,
+        "Request body should match large payload size"
+      );
       return new Response(body);
     };
 
@@ -145,6 +180,10 @@ test("Integration tests", async (t) => {
     });
 
     assert.strictEqual(response.status, 200, "Response status should be 200");
-    assert.strictEqual(response.data.length, largePayload.length, "Response data should match large payload size");
+    assert.strictEqual(
+      response.data.length,
+      largePayload.length,
+      "Response data should match large payload size"
+    );
   });
 });
