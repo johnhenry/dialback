@@ -4,6 +4,8 @@ import {
   randId,
   doConnection,
 } from "./util/index.mjs";
+import http from "http";
+import { WebSocketServer } from "ws";
 
 /** @type {Set<import('./types/types').ServerStrategy>} */
 const serverStrategies = new Set([
@@ -38,6 +40,12 @@ const Server = class {
   #boundFetch = null;
   /** @type {string | null} */
   #secret = null;
+  /** @type {http.Server | null} */
+  #httpServer = null;
+  /** @type {WebSocketServer | null} */
+  #wss = null;
+  /** @type {boolean} */
+  #listening = false;
 
   /**
    * @param {() => Response} defaultHandler
@@ -51,6 +59,84 @@ const Server = class {
     this.#boundFetch = this.unBoundFetch.bind(this);
     this.strategy = strategy;
     this.#secret = secret;
+  }
+
+  /**
+   * @param {number} port 
+   * @returns {Promise<void>}
+   */
+  async listen(port) {
+    if (this.#listening) {
+      throw new Error("Server is already listening");
+    }
+
+    this.#httpServer = http.createServer(async (req, res) => {
+      const request = new Request(req.url, {
+        method: req.method,
+        headers: req.headers,
+        body: req,
+      });
+
+      try {
+        const response = await this.#boundFetch(request);
+        res.writeHead(response.status, response.headers);
+        if (response.body) {
+          for await (const chunk of response.body) {
+            res.write(chunk);
+          }
+        }
+        res.end();
+      } catch (error) {
+        console.error("Error handling request:", error);
+        res.writeHead(500);
+        res.end("Internal Server Error");
+      }
+    });
+
+    this.#wss = new WebSocketServer({ server: this.#httpServer });
+
+    this.#wss.on("connection", (ws) => {
+      const [send, receive] = doConnection(ws);
+      this.#agents.set(ws, [send, receive]);
+
+      ws.on("close", () => {
+        this.#agents.delete(ws);
+      });
+    });
+
+    await new Promise((resolve) => {
+      this.#httpServer.listen(port, () => {
+        this.#listening = true;
+        resolve();
+      });
+    });
+  }
+
+  /**
+   * @returns {Promise<void>}
+   */
+  async close() {
+    if (!this.#listening) {
+      throw new Error("Server is not listening");
+    }
+
+    await new Promise((resolve, reject) => {
+      this.#wss.close((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    await new Promise((resolve, reject) => {
+      this.#httpServer.close((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    this.#listening = false;
+    this.#httpServer = null;
+    this.#wss = null;
   }
 
   // ... rest of the code remains unchanged
@@ -84,6 +170,13 @@ const Server = class {
    */
   get fetch() {
     return this.#boundFetch;
+  }
+
+  /**
+   * @returns {boolean}
+   */
+  get listening() {
+    return this.#listening;
   }
 };
 
