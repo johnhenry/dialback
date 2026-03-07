@@ -41,6 +41,10 @@ const Agent = class extends EventEmitter {
   #abort = () => {};
   /** @type {(request: Request, options: { id: string }) => Promise<Response>} */
   #handler = () => new Response("empty responder", { status: 500 });
+  /** @type {((request: Request) => Request | Promise<Request>) | null} */
+  #onRequest = null;
+  /** @type {((request: Request, response: Response) => Response | Promise<Response>) | null} */
+  #onResponse = null;
 
   /**
    * @param {string} address
@@ -48,11 +52,13 @@ const Agent = class extends EventEmitter {
    */
   constructor(
     address,
-    { reconnect, log, abort, secret } = {
+    { reconnect, log, abort, secret, onRequest, onResponse } = {
       reconnect: undefined,
       log: 0,
       abort: () => new Response("aborted", { status: 500 }),
       secret: undefined,
+      onRequest: null,
+      onResponse: null,
     }
   ) {
     super();
@@ -60,6 +66,8 @@ const Agent = class extends EventEmitter {
     this.#reconnect = reconnect;
     this.#id = randId("agent-");
     this.#abort = abort;
+    this.#onRequest = onRequest || null;
+    this.#onResponse = onResponse || null;
     this.#sessions = new Map();
     if (this.#log > LOG_LEVELS.WARN) {
       console.log("AgentID", this.#id);
@@ -138,13 +146,30 @@ const Agent = class extends EventEmitter {
                 });
               }
 
-              const request = new Request(payload.url, {
+              let request = new Request(payload.url, {
                 method: payload.method,
                 headers: payload.headers,
                 body: body,
                 duplex: "half",
               });
-              response = this.#handler(request, { id: req });
+              if (this.#onRequest) {
+                request = (await this.#onRequest(request)) || request;
+              }
+              try {
+                response = this.#handler(request, {
+                  id: req,
+                  proxy: { agentId: this.#id, requestId: id },
+                  state: new Map(),
+                });
+              } catch (err) {
+                if (this.#log >= LOG_LEVELS.ERROR) {
+                  console.error("Handler error:", err);
+                }
+                this.emit("error", err);
+                response = Promise.resolve(
+                  new Response("Internal Server Error", { status: 500 })
+                );
+              }
               this.#sessions.set(id, {
                 send,
                 recieve,
@@ -152,7 +177,11 @@ const Agent = class extends EventEmitter {
                 response,
               });
               response.then(
-                (response = new Response(null, { status: 500 })) => {
+                async (response = new Response(null, { status: 500 })) => {
+                  if (this.#onResponse) {
+                    response =
+                      (await this.#onResponse(request, response)) || response;
+                  }
                   const session = this.#sessions.get(id);
                   this.#sessions.set(id, {
                     ...session,
@@ -172,7 +201,6 @@ const Agent = class extends EventEmitter {
                       const reader = response.body.getReader();
                       let { value, done } = await reader.read();
                       while (!done) {
-                        // TODO: bail out if collection empty?
                         send({
                           kind: "response:body",
                           payload: {
@@ -180,16 +208,31 @@ const Agent = class extends EventEmitter {
                             bodyKind: "base64",
                           },
                         });
+                        // Backpressure: wait if WebSocket buffer is full
+                        while (connection.bufferedAmount > 1024 * 64) {
+                          await new Promise((r) => setTimeout(r, 10));
+                        }
                         ({ value, done } = await reader.read());
-                        await new Promise((success) =>
-                          setTimeout(success, 1000)
-                        );
                       }
                       send({ kind: "response:body:end" });
                     });
                   }
                 }
-              );
+              ).catch((err) => {
+                if (this.#log >= LOG_LEVELS.ERROR) {
+                  console.error("Response error:", err);
+                }
+                this.emit("error", err);
+                send({
+                  kind: "response",
+                  payload: {
+                    headers: {},
+                    statusText: err?.message || "Internal Server Error",
+                    status: 500,
+                    body: false,
+                  },
+                });
+              });
             }
           }
         });
@@ -245,6 +288,10 @@ const Agent = class extends EventEmitter {
       this.#connection = null;
       this.emit("close");
     }
+  }
+
+  async [Symbol.asyncDispose]() {
+    await this.close();
   }
 };
 
