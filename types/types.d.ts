@@ -26,12 +26,34 @@ export interface AgentOptions {
   log?: number;
   abort?: () => Response;
   secret?: string;
+  /**
+   * Pluggable connection factory, used instead of `new WebSocket(address)`
+   * when provided. Must resolve with an already-connected `Connection` --
+   * any additional handshake the transport needs (e.g. an identity
+   * challenge/response) should happen before this promise resolves. See
+   * `leproxy/browsermesh`'s `createBrowsermeshTransport()` for a concrete
+   * implementation.
+   */
+  transport?: (address: string) => Promise<Connection>;
 }
 
 export interface Connection {
   send: (data: any) => void;
   addEventListener: (event: string, callback: (event: any) => void) => void;
   close: () => void;
+  /**
+   * `agent.mjs` and `server.mjs` also use a second, EventEmitter-style API
+   * on top of the DOM-style one above (`.on("open"|"close", cb)`) and poll
+   * `.bufferedAmount` for backpressure. The `ws` package's `WebSocket`
+   * satisfies both simultaneously, which is why the existing code works
+   * against it unmodified; any custom `Connection` (e.g. a `transport`
+   * option's return value) needs to satisfy this same dual shape, not just
+   * the narrower shape above. Declared optional here rather than folded
+   * into the required shape, since not every caller passing a `Connection`
+   * (e.g. into `Server#addConnection`) needs `"open"`/reconnect semantics.
+   */
+  on?: (event: string, callback: (...args: any[]) => void) => void;
+  bufferedAmount?: number;
 }
 
 export interface ConnectionOptions {
