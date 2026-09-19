@@ -26,6 +26,14 @@ import {
 } from "../transports/handshake.mjs";
 import { encodeFrame, FrameDecoder } from "../transports/framing.mjs";
 
+// WebCrypto Ed25519 (what PodIdentity.generate()/sign()/verify() need) is
+// a real platform floor, not a portability bug to work around: Node 18
+// doesn't have a global `crypto` at all, confirmed by real CI ("crypto is
+// not defined"), while Node 20+ does. This only gates the identity/
+// handshake/end-to-end tests below -- FrameDecoder's pure-logic tests need
+// no crypto and run on every Node version this package supports.
+const hasWebCryptoEd25519 = typeof crypto !== "undefined" && !!crypto.subtle;
+
 let port = 9200;
 
 test("FrameDecoder", async (t) => {
@@ -80,7 +88,7 @@ test("FrameDecoder", async (t) => {
   });
 });
 
-test("identity handshake (handshake.mjs, direct)", async (t) => {
+test("identity handshake (handshake.mjs, direct)", { skip: !hasWebCryptoEd25519 && "requires WebCrypto Ed25519 (Node 18 has no global crypto)" }, async (t) => {
   await t.test("succeeds for a genuine, correctly-signed identity", async () => {
     const net = new VirtualNetwork();
     const address = `mem://localhost:${port++}`;
@@ -198,7 +206,7 @@ test("identity handshake (handshake.mjs, direct)", async (t) => {
   });
 });
 
-test("createBrowsermeshTransport / acceptBrowsermeshConnections", async (t) => {
+test("createBrowsermeshTransport / acceptBrowsermeshConnections", { skip: !hasWebCryptoEd25519 && "requires WebCrypto Ed25519 (Node 18 has no global crypto)" }, async (t) => {
   await t.test("a forged identity is rejected and never reaches Server#addConnection", async () => {
     const net = new VirtualNetwork();
     const address = `mem://localhost:${port++}`;
@@ -278,7 +286,7 @@ test("createBrowsermeshTransport / acceptBrowsermeshConnections", async (t) => {
   });
 });
 
-test("end-to-end: Server + Agent over the browsermesh transport, through a real HTTP request", async (t) => {
+test("end-to-end: Server + Agent over the browsermesh transport, through a real HTTP request", { skip: !hasWebCryptoEd25519 && "requires WebCrypto Ed25519 (Node 18 has no global crypto)" }, async (t) => {
   let server;
   let agent;
   let listener;
