@@ -73,6 +73,7 @@
       "dependencies": [
         "npm:@johnhenry/browsermesh-netway@^0.0.1",
         "npm:@johnhenry/browsermesh-primitives@^0.0.1",
+        "npm:@types/node@18.16.19",
         "npm:ws@^8.18.0"
       ]
     }

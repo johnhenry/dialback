@@ -44,7 +44,14 @@ const invertedAsyncIterator = (
       if (buffer.length) {
         yield buffer.shift();
       } else {
-        ({ promise, resolve } = Promise.withResolvers());
+        // Promise.withResolvers() is Node 22+ only -- this package's
+        // engines range goes down to 14.0.0, and real CI (Node 18/20)
+        // confirmed the failure: a TypeError here, not a hang, but still a
+        // real break for every consumer of this generator on those
+        // versions. Portable manual-executor equivalent.
+        promise = new Promise((res) => {
+          resolve = res;
+        });
         yield await promise;
       }
     }

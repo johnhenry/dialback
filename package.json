@@ -63,6 +63,7 @@
   },
   "devDependencies": {
     "@johnhenry/browsermesh-netway": "^0.0.1",
-    "@johnhenry/browsermesh-primitives": "^0.0.1"
+    "@johnhenry/browsermesh-primitives": "^0.0.1",
+    "@types/node": "18.16.19"
   }
 }

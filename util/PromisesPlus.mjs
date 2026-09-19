@@ -9,7 +9,14 @@ export {
  * @returns {{ promise: Promise<T>, resolve: (value: T) => void, reject: (reason?: any) => void }}
  */
 const withResolvers = () => {
-  return Promise.withResolvers();
+  // Promise.withResolvers() is Node 22+ only -- this package's engines
+  // range goes down to 14.0.0. Portable manual-executor equivalent.
+  let resolve, reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
 };
 
 /**
