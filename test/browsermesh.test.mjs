@@ -1,4 +1,4 @@
-// Tests for leproxy's optional `leproxy/browsermesh` transport
+// Tests for dialback's optional `dialback/browsermesh` transport
 // (transports/browsermesh.mjs, framing.mjs, handshake.mjs,
 // stream-socket-connection.mjs).
 //

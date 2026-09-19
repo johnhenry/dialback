@@ -1,4 +1,4 @@
-// Type definitions for leproxy
+// Type definitions for dialback
 
 export type ServerStrategy =
   | "first"
@@ -31,7 +31,7 @@ export interface AgentOptions {
    * when provided. Must resolve with an already-connected `Connection` --
    * any additional handshake the transport needs (e.g. an identity
    * challenge/response) should happen before this promise resolves. See
-   * `leproxy/browsermesh`'s `createBrowsermeshTransport()` for a concrete
+   * `dialback/browsermesh`'s `createBrowsermeshTransport()` for a concrete
    * implementation.
    */
   transport?: (address: string) => Promise<Connection>;

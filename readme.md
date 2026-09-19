@@ -1,11 +1,18 @@
-# Le Proxy
+# dialback
 
-[![npm version](https://badge.fury.io/js/leproxy.svg)](https://badge.fury.io/js/leproxy)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-<img alt="LeRoute Logo" width="512" height="512" src="./logo.jpeg" style="width:512px;height:512px"/>
+<img alt="dialback logo" width="512" height="512" src="./logo.jpeg" style="width:512px;height:512px"/>
 
-Library for creating a reverse proxy over websockets.
+Library for creating a reverse proxy over websockets: an `Agent` dials out
+(through a NAT/firewall it's behind), and the `Server` dials back through
+that same connection to reach it -- the name is the mechanism, not just a
+label.
+
+> **Provenance:** previously developed as `leproxy` (itself a rename of the
+> original `proxy-socks`), but never actually published to npm under either
+> name. Renamed and adopted into the `@johnhenry` scope, starting fresh at
+> `0.0.0`.
 
 Request/Response <-HTTP-> [Server] <-WS-> [Agent]
 
@@ -14,7 +21,7 @@ Request/Response <-HTTP-> [Server] <-WS-> [Agent]
 ### Installation
 
 ```bash
-npm install leproxy
+npm install @johnhenry/dialback
 ```
 
 ### Usage with Node.js
@@ -22,7 +29,7 @@ npm install leproxy
 1. Create Server (Node.js)
 
 ```javascript
-import { Server } from "leproxy";
+import { Server } from "@johnhenry/dialback";
 import http from 'http';
 import { WebSocketServer } from 'ws';
 
@@ -51,7 +58,7 @@ httpServer.listen(8082, () => {
 2. Create Agent
 
 ```javascript
-import { Agent } from "leproxy";
+import { Agent } from "@johnhenry/dialback";
 
 const address = `ws://localhost:8082`;
 const { serve } = new Agent(address, { reconnect: 1000, log: 2 });
@@ -73,7 +80,7 @@ serve(async (request, { id }) => {
 1. Create Server (Deno)
 
 ```javascript
-import { Server } from "npm:leproxy";
+import { Server } from "npm:@johnhenry/dialback";
 const server = new Server(() => new Response("no responder", { status: 500 }));
 Deno.serve({ port: 8082 }, (req) => {
   if (req.headers.get("upgrade") !== "websocket") {
@@ -127,7 +134,7 @@ new Server(defaultHandler, options)
 
 #### A note on authentication
 
-The `secret` option is a single shared secret compared (in constant time) against whatever every agent sends in its handshake — there's no per-agent identity, rotation, or session/token model. That's an intentional simplification for now, not an oversight; if you need per-agent credentials or anything more sophisticated, put this behind your own auth layer (e.g. a reverse proxy or VPN in front of the WebSocket port) rather than expecting `leproxy` to provide it.
+The `secret` option is a single shared secret compared (in constant time) against whatever every agent sends in its handshake — there's no per-agent identity, rotation, or session/token model. That's an intentional simplification for now, not an oversight; if you need per-agent credentials or anything more sophisticated, put this behind your own auth layer (e.g. a reverse proxy or VPN in front of the WebSocket port) rather than expecting `dialback` to provide it.
 
 `secret` is required precisely because omitting it isn't a safe default — a `Server` with no secret configured would accept a handshake from *any* agent with no verification at all. If that's genuinely what you want (e.g. local development, or a deployment secured entirely at the network layer), pass `allowUnauthenticatedAgents: true` explicitly so it's visible in the code that authentication was deliberately skipped, not merely forgotten.
 
@@ -147,7 +154,7 @@ new Agent(address, options)
   - `log` (optional): An integer representing the log level (0-4).
   - `abort` (optional): A function that returns a `Response` object when a request is aborted.
   - `secret` (optional): A string used for authentication between the server and agents.
-  - `transport` (optional): `(address) => Promise<Connection>`. When provided, used instead of `new WebSocket(address)` to establish the connection — see [Optional: the `leproxy/browsermesh` transport](#optional-the-leproxybrowsermesh-transport) below.
+  - `transport` (optional): `(address) => Promise<Connection>`. When provided, used instead of `new WebSocket(address)` to establish the connection — see [Optional: the `dialback/browsermesh` transport](#optional-the-dialbackbrowsermesh-transport) below.
 
 #### Methods
 
@@ -163,11 +170,11 @@ new Agent(address, options)
 
 A utility function that creates a WebSocket connection from an HTTP request. This function is primarily used in Deno environments.
 
-## Optional: the `leproxy/browsermesh` transport
+## Optional: the `dialback/browsermesh` transport
 
-`leproxy`'s built-in transport is a WebSocket plus a single shared `secret` string, compared against whatever every connecting agent sends. `leproxy/browsermesh` is an **optional, additive** module — never imported by `leproxy`'s own `index.mjs`/`server.mjs`/`agent.mjs`, so requiring plain `leproxy` never touches it — that swaps that in for real, per-agent Ed25519 identity, built on [`@johnhenry/browsermesh-netway`](https://www.npmjs.com/package/@johnhenry/browsermesh-netway) (virtual networking: `StreamSocket`/`VirtualNetwork`/`Listener`) and [`@johnhenry/browsermesh-primitives`](https://www.npmjs.com/package/@johnhenry/browsermesh-primitives) (`PodIdentity`, an Ed25519 keypair whose `podId` is a base64url hash of its public key).
+`dialback`'s built-in transport is a WebSocket plus a single shared `secret` string, compared against whatever every connecting agent sends. `dialback/browsermesh` is an **optional, additive** module — never imported by `dialback`'s own `index.mjs`/`server.mjs`/`agent.mjs`, so requiring plain `dialback` never touches it — that swaps that in for real, per-agent Ed25519 identity, built on [`@johnhenry/browsermesh-netway`](https://www.npmjs.com/package/@johnhenry/browsermesh-netway) (virtual networking: `StreamSocket`/`VirtualNetwork`/`Listener`) and [`@johnhenry/browsermesh-primitives`](https://www.npmjs.com/package/@johnhenry/browsermesh-primitives) (`PodIdentity`, an Ed25519 keypair whose `podId` is a base64url hash of its public key).
 
-Why: a shared secret authenticates *that you're some agent this server trusts*, not *which* agent — every agent presents the same string, there's no revocation short of rotating the secret for everyone, and no way to tell agents apart at the auth layer. `leproxy/browsermesh` gives each agent its own keypair; the server verifies a signed challenge before the connection is ever handed to `Server#addConnection()`, so a compromised or retired agent's key can simply stop being trusted without affecting any other agent.
+Why: a shared secret authenticates *that you're some agent this server trusts*, not *which* agent — every agent presents the same string, there's no revocation short of rotating the secret for everyone, and no way to tell agents apart at the auth layer. `dialback/browsermesh` gives each agent its own keypair; the server verifies a signed challenge before the connection is ever handed to `Server#addConnection()`, so a compromised or retired agent's key can simply stop being trusted without affecting any other agent.
 
 Both `@johnhenry/browsermesh-netway` and `@johnhenry/browsermesh-primitives` are optional `peerDependencies` — install them yourself to use this module:
 
@@ -178,11 +185,11 @@ npm install @johnhenry/browsermesh-netway @johnhenry/browsermesh-primitives
 ### Usage
 
 ```javascript
-import { Server, Agent } from "leproxy";
+import { Server, Agent } from "@johnhenry/dialback";
 import {
   createBrowsermeshTransport,
   acceptBrowsermeshConnections,
-} from "leproxy/browsermesh";
+} from "@johnhenry/dialback/browsermesh";
 import { VirtualNetwork } from "@johnhenry/browsermesh-netway";
 import { PodIdentity } from "@johnhenry/browsermesh-primitives";
 
@@ -216,7 +223,7 @@ serve(async (request) => new Response("Hello there!", { status: 200 }));
 
 ### The handshake
 
-Run entirely inside the transport, before either side ever sees a `Connection`: the listener (mirroring how `Server` already validates incoming agents against its `secret` today) sends a random nonce; the connecting peer signs it with its `PodIdentity` and replies with `{ podId, publicKey, signature }`; the listener verifies the signature and that `podId` really is the hash of the supplied `publicKey`, then sends accept or reject. A rejected or malformed handshake closes the connection immediately — it's never wrapped as a `Connection` or handed to `Server#addConnection()`. See `transports/handshake.mjs` for the exact wire format and `transports/framing.mjs` for how `leproxy`'s message-oriented protocol is framed (newline-delimited JSON) over `StreamSocket`'s raw byte stream.
+Run entirely inside the transport, before either side ever sees a `Connection`: the listener (mirroring how `Server` already validates incoming agents against its `secret` today) sends a random nonce; the connecting peer signs it with its `PodIdentity` and replies with `{ podId, publicKey, signature }`; the listener verifies the signature and that `podId` really is the hash of the supplied `publicKey`, then sends accept or reject. A rejected or malformed handshake closes the connection immediately — it's never wrapped as a `Connection` or handed to `Server#addConnection()`. See `transports/handshake.mjs` for the exact wire format and `transports/framing.mjs` for how `dialback`'s message-oriented protocol is framed (newline-delimited JSON) over `StreamSocket`'s raw byte stream.
 
 This handshake is intentionally **one-directional** — the listener authenticates the connecting agent, not the other way around — exactly matching the asymmetry of the existing shared-`secret` model (an agent today has no way to verify the server's secret either). The listener does include its own `podId` in the initial challenge, but only informationally (not signed) — a connecting agent can log/identify which listener it reached, but that isn't cryptographic proof of the listener's identity.
 

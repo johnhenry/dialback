@@ -1,13 +1,17 @@
 {
-  "name": "leproxy",
-  "version": "0.0.1",
-  "description": "Reverse proxy HTTP requests over web sockets",
+  "name": "@johnhenry/dialback",
+  "version": "0.0.0",
+  "description": "Reverse proxy HTTP requests over web sockets -- an agent dials out, the server dials back through that connection to reach it",
   "main": "index.mjs",
   "type": "module",
   "types": "types/types.d.ts",
   "exports": {
     ".": "./index.mjs",
     "./browsermesh": "./transports/browsermesh.mjs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "test:node": "node --test test/node.test.mjs",
@@ -20,11 +24,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/johnhenry/leproxy.git"
+    "url": "git+https://github.com/johnhenry/dialback.git"
   },
   "keywords": [
     "websocket",
     "reverse-proxy",
+    "reverse-tunnel",
     "socket",
     "reverse",
     "proxy",
@@ -33,11 +38,11 @@
     "response"
   ],
   "author": "John Henry",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
-    "url": "https://github.com/johnhenry/leproxy/issues"
+    "url": "https://github.com/johnhenry/dialback/issues"
   },
-  "homepage": "https://github.com/johnhenry/leproxy#readme",
+  "homepage": "https://github.com/johnhenry/dialback#readme",
   "engines": {
     "node": ">=14.0.0"
   },

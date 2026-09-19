@@ -1,32 +1,32 @@
 {
-  "version": "3",
-  "packages": {
-    "specifiers": {
-      "jsr:@std/assert@1": "jsr:@std/assert@1.0.3",
-      "jsr:@std/internal@^1.0.2": "jsr:@std/internal@1.0.2",
-      "npm:@types/node": "npm:@types/node@18.16.19",
-      "npm:ws@^8.18.0": "npm:ws@8.18.0"
+  "version": "5",
+  "specifiers": {
+    "jsr:@std/assert@1": "1.0.3",
+    "jsr:@std/internal@^1.0.2": "1.0.2",
+    "npm:@types/node@*": "18.16.19",
+    "npm:ws@^8.18.0": "8.18.0"
+  },
+  "jsr": {
+    "@std/assert@1.0.3": {
+      "integrity": "b0d03ce1ced880df67132eea140623010d415848df66f6aa5df76507ca7c26d8",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
     },
-    "jsr": {
-      "@std/assert@1.0.3": {
-        "integrity": "b0d03ce1ced880df67132eea140623010d415848df66f6aa5df76507ca7c26d8",
-        "dependencies": [
-          "jsr:@std/internal@^1.0.2"
-        ]
-      },
-      "@std/internal@1.0.2": {
-        "integrity": "f4cabe2021352e8bfc24e6569700df87bf070914fc38d4b23eddd20108ac4495"
-      }
+    "@std/internal@1.0.2": {
+      "integrity": "f4cabe2021352e8bfc24e6569700df87bf070914fc38d4b23eddd20108ac4495"
+    }
+  },
+  "npm": {
+    "@types/node@18.16.19": {
+      "integrity": "sha512-IXl7o+R9iti9eBW4Wg2hx1xQDig183jj7YLn8F7udNceyfkbn1ZxmzZXuak20gR40D7pIkIY1kYGx5VIGbaHKA=="
     },
-    "npm": {
-      "@types/node@18.16.19": {
-        "integrity": "sha512-IXl7o+R9iti9eBW4Wg2hx1xQDig183jj7YLn8F7udNceyfkbn1ZxmzZXuak20gR40D7pIkIY1kYGx5VIGbaHKA==",
-        "dependencies": {}
-      },
-      "ws@8.18.0": {
-        "integrity": "sha512-8VbfWfHLbbwu3+N6OKsOMpBdT4kXPDDB9cJk2bJ6mh9ucxdlnNvH1e+roYkKmN9Nxw2yjz7VzeO9oOz2zJ04Pw==",
-        "dependencies": {}
-      }
+    "ws@8.18.0": {
+      "integrity": "sha512-8VbfWfHLbbwu3+N6OKsOMpBdT4kXPDDB9cJk2bJ6mh9ucxdlnNvH1e+roYkKmN9Nxw2yjz7VzeO9oOz2zJ04Pw==",
+      "optionalPeers": [
+        "bufferutil@^4.0.1",
+        "utf-8-validate@>=5.0.2"
+      ]
     }
   },
   "redirects": {
@@ -71,6 +71,8 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@johnhenry/browsermesh-netway@^0.0.1",
+        "npm:@johnhenry/browsermesh-primitives@^0.0.1",
         "npm:ws@^8.18.0"
       ]
     }

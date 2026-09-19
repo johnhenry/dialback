@@ -4,10 +4,10 @@ import { encodeFrame, FrameReader } from "./framing.mjs";
 /**
  * Wraps a `@johnhenry/browsermesh-netway` `StreamSocket` (a byte-chunk
  * stream: `read()`/`write()`/`close()`, no message boundaries, no
- * `bufferedAmount`) as a `leproxy` `Connection` -- the same shape the `ws`
+ * `bufferedAmount`) as a `dialback` `Connection` -- the same shape the `ws`
  * package's `WebSocket` satisfies today.
  *
- * `leproxy` uses two overlapping APIs against a `Connection` depending on
+ * `dialback` uses two overlapping APIs against a `Connection` depending on
  * which file is looking at it:
  *  - `util/connection.mjs`'s `doConnection()` uses the DOM style:
  *    `.send(data)` / `.addEventListener("message", cb)` where `cb` receives

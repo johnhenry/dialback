@@ -1,22 +1,22 @@
 /**
- * Optional, additive integration between `leproxy` and
+ * Optional, additive integration between `dialback` and
  * `@johnhenry/browsermesh-netway` (virtual networking) +
  * `@johnhenry/browsermesh-primitives` (Ed25519 identity).
  *
  * This module is never imported by `index.mjs`, `server.mjs`, or
- * `agent.mjs` -- requiring `leproxy` normally never touches
+ * `agent.mjs` -- requiring `dialback` normally never touches
  * browsermesh-netway or browsermesh-primitives at all, and neither package
  * is a hard `dependencies` entry (both are optional `peerDependencies`).
- * Import this module explicitly (`import { ... } from "leproxy/browsermesh"`)
+ * Import this module explicitly (`import { ... } from "dialback/browsermesh"`)
  * to opt in.
  *
- * What this buys you over `leproxy`'s built-in WebSocket + shared-`secret`
+ * What this buys you over `dialback`'s built-in WebSocket + shared-`secret`
  * transport: real, per-agent Ed25519 identity (a distinct keypair per agent,
  * verified via a challenge/response handshake) instead of one shared secret
  * string compared against every connecting agent. See `handshake.mjs` for
  * the exact protocol and `stream-socket-connection.mjs` for how a
  * `StreamSocket` (byte-oriented, no message framing, no `bufferedAmount`)
- * is adapted into the `Connection` shape `leproxy` already expects.
+ * is adapted into the `Connection` shape `dialback` already expects.
  *
  * @module transports/browsermesh
  */
@@ -77,7 +77,7 @@ export function createBrowsermeshTransport(net, identity, options = {}) {
       return new StreamSocketConnection(socket, { reader });
     } catch (error) {
       if (log >= LOG_LEVELS.ERROR) {
-        console.error("leproxy/browsermesh: identity handshake failed while connecting:", error);
+        console.error("dialback/browsermesh: identity handshake failed while connecting:", error);
       }
       try {
         await socket.close();
@@ -127,7 +127,7 @@ export async function acceptBrowsermeshConnections(listener, server, identity, o
     );
   }
   if (!server || typeof server.addConnection !== "function") {
-    throw new TypeError("acceptBrowsermeshConnections requires a leproxy Server");
+    throw new TypeError("acceptBrowsermeshConnections requires a dialback Server");
   }
   const { timeoutMs, log = LOG_LEVELS.NONE, onConnection, onRejected } = options;
 
@@ -140,7 +140,7 @@ export async function acceptBrowsermeshConnections(listener, server, identity, o
     acceptOne(socket, server, identity, { timeoutMs, log, onConnection, onRejected }).catch(
       (error) => {
         if (log >= LOG_LEVELS.ERROR) {
-          console.error("leproxy/browsermesh: error accepting connection:", error);
+          console.error("dialback/browsermesh: error accepting connection:", error);
         }
       }
     );
@@ -159,7 +159,7 @@ async function acceptOne(socket, server, identity, { timeoutMs, log, onConnectio
     handshake = await challengeConnectingPeer(socket, identity, { timeoutMs });
   } catch (error) {
     if (log >= LOG_LEVELS.WARN) {
-      console.warn("leproxy/browsermesh: rejecting connection, identity handshake failed:", error);
+      console.warn("dialback/browsermesh: rejecting connection, identity handshake failed:", error);
     }
     try {
       await socket.close();
@@ -171,13 +171,13 @@ async function acceptOne(socket, server, identity, { timeoutMs, log, onConnectio
   }
 
   const connection = new StreamSocketConnection(socket, { reader: handshake.reader });
-  // Not part of the `Connection` interface leproxy itself relies on, but a
+  // Not part of the `Connection` interface dialback itself relies on, but a
   // useful, harmless extra: the verified remote identity, for callers that
   // want to log or make routing decisions based on which agent connected.
   connection.peerPodId = handshake.podId;
 
   if (log >= LOG_LEVELS.INFO) {
-    console.log("leproxy/browsermesh: accepted verified connection from", handshake.podId);
+    console.log("dialback/browsermesh: accepted verified connection from", handshake.podId);
   }
 
   await server.addConnection(connection);

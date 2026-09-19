@@ -1,7 +1,7 @@
 /**
  * Newline-delimited JSON framing over a raw byte stream.
  *
- * `leproxy`'s wire protocol (see `util/connection.mjs`'s `doConnection()`) is
+ * `dialback`'s wire protocol (see `util/connection.mjs`'s `doConnection()`) is
  * discrete JSON messages: `connection.send(JSON.stringify(x))` on the way
  * out, `JSON.parse(event.data)` on a per-message `"message"` event on the
  * way in. `StreamSocket` (from `@johnhenry/browsermesh-netway`) has no such

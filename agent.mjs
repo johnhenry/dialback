@@ -82,7 +82,7 @@ const Agent = class extends EventEmitter {
   }
 
   /**
-   * Runs the leproxy wire-protocol handshake (send the `"agent"` message)
+   * Runs the dialback wire-protocol handshake (send the `"agent"` message)
    * and starts the message-dispatch loop against an already-connected
    * `Connection`, then resolves `success` with it. Shared by both the
    * default `WebSocket` path and the pluggable `transport` path in
