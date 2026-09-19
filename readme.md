@@ -105,7 +105,8 @@ new Server(defaultHandler, options)
 - `defaultHandler`: A function that returns a `Response` object when no agent is available to handle the request.
 - `options`: An object with the following properties:
   - `strategy` (optional): A string specifying the agent selection strategy. Default is "first". One of `"first"`, `"last"`, `"random"`, `"round-robin"`, `"last-used"` (the agent that most recently completed a request/response cycle), or `"most-recent"` (the agent that most recently connected).
-  - `secret` (optional): A string used for authentication between the server and agents.
+  - `secret`: A string used for authentication between the server and agents. **Required** unless `allowUnauthenticatedAgents` is set — the constructor throws otherwise, since without a secret the server has nothing to validate an agent handshake against and would accept any agent unverified.
+  - `allowUnauthenticatedAgents` (optional): Set to `true` to explicitly opt out of the `secret` requirement and accept any agent handshake with no verification. Default is `false`.
   - `log` (optional): An integer log level (0-4, matching `LOG_LEVELS`/`Agent`'s `log` option). Default is `0` (no logging).
 
 #### Methods
@@ -126,7 +127,9 @@ new Server(defaultHandler, options)
 
 #### A note on authentication
 
-The `secret` option is a single shared secret compared against whatever every agent sends in its handshake — there's no per-agent identity, rotation, or session/token model. That's an intentional simplification for now, not an oversight; if you need per-agent credentials or anything more sophisticated, put this behind your own auth layer (e.g. a reverse proxy or VPN in front of the WebSocket port) rather than expecting `leproxy` to provide it.
+The `secret` option is a single shared secret compared (in constant time) against whatever every agent sends in its handshake — there's no per-agent identity, rotation, or session/token model. That's an intentional simplification for now, not an oversight; if you need per-agent credentials or anything more sophisticated, put this behind your own auth layer (e.g. a reverse proxy or VPN in front of the WebSocket port) rather than expecting `leproxy` to provide it.
+
+`secret` is required precisely because omitting it isn't a safe default — a `Server` with no secret configured would accept a handshake from *any* agent with no verification at all. If that's genuinely what you want (e.g. local development, or a deployment secured entirely at the network layer), pass `allowUnauthenticatedAgents: true` explicitly so it's visible in the code that authentication was deliberately skipped, not merely forgotten.
 
 ### Agent
 

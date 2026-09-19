@@ -11,6 +11,13 @@ export type ServerStrategy =
 export interface ServerOptions {
   strategy?: ServerStrategy;
   secret?: string;
+  /**
+   * Without `secret`, the server has nothing to validate an agent
+   * handshake against and would accept any agent with zero verification.
+   * That must be opted into explicitly — the constructor throws if
+   * neither `secret` nor this flag is provided.
+   */
+  allowUnauthenticatedAgents?: boolean;
   log?: number;
 }
 

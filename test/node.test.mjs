@@ -34,14 +34,14 @@ agentModule.default.prototype.createConnection = function(address, secret) {
 
 test("Server", async (t) => {
   await t.test("createServer", async (t) => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     assert.ok(server, "Server should be created");
     assert.strictEqual(typeof server.listen, "function", "Server should have a listen method");
     assert.strictEqual(typeof server.close, "function", "Server should have a close method");
   });
 
   await t.test("Server listen and close", async (t) => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     await server.listen(8080);
     assert.ok(server.listening, "Server should be listening");
     await server.close();

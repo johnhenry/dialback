@@ -70,7 +70,7 @@ const makeRequest = (url = "http://test.com/") => new Request(url, { method: "GE
 
 test("Server connection management", async (t) => {
   await t.test("addConnection registers a connection and getConnectionByIndex finds it", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     const a = new MockConnection();
     await server.addConnection(a);
     assert.strictEqual(server.getConnectionByIndex(0), a);
@@ -78,7 +78,7 @@ test("Server connection management", async (t) => {
   });
 
   await t.test("getConnectionById resolves only after the agent handshake is processed", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     const a = new MockConnection();
     await server.addConnection(a);
     assert.strictEqual(server.getConnectionById("agent-a"), undefined);
@@ -88,7 +88,7 @@ test("Server connection management", async (t) => {
   });
 
   await t.test("removeConnection unregisters a connection", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     const a = new MockConnection();
     const b = new MockConnection();
     await server.addConnection(a);
@@ -99,7 +99,7 @@ test("Server connection management", async (t) => {
   });
 
   await t.test("removeConnectionById removes by handshake-registered agent id", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     const a = new MockConnection();
     await server.addConnection(a);
     handshake(a, "agent-a");
@@ -111,7 +111,7 @@ test("Server connection management", async (t) => {
   });
 
   await t.test("removeConnectionByIndex removes by position", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     const a = new MockConnection();
     const b = new MockConnection();
     await server.addConnection(a);
@@ -121,7 +121,7 @@ test("Server connection management", async (t) => {
   });
 
   await t.test("a request in flight is rejected if its connection is removed", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     const a = new MockConnection();
     await server.addConnection(a);
     const promise = new Promise((resolve, reject) => {
@@ -132,7 +132,7 @@ test("Server connection management", async (t) => {
   });
 
   await t.test("setStrategy validates against the declared strategy set", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     assert.strictEqual(server.strategy, "first");
     server.setStrategy("random");
     assert.strictEqual(server.strategy, "random");
@@ -142,7 +142,7 @@ test("Server connection management", async (t) => {
   });
 
   await t.test("the strategy getter/setter is equivalent to setStrategy", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     server.strategy = "round-robin";
     assert.strictEqual(server.strategy, "round-robin");
     assert.throws(() => {
@@ -170,11 +170,44 @@ test("Server connection management", async (t) => {
     assert.strictEqual(server.getConnectionById("agent-a"), a);
     assert.ok(!a.closed);
   });
+
+  await t.test("constructing a Server without a secret or an explicit opt-out throws", () => {
+    assert.throws(() => new Server(), /requires a `secret`/);
+    assert.throws(() => new Server(undefined, {}), /requires a `secret`/);
+    assert.throws(
+      () => new Server(undefined, { strategy: "random" }),
+      /requires a `secret`/
+    );
+  });
+
+  await t.test("allowUnauthenticatedAgents opts out of the secret requirement and accepts any handshake", async () => {
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
+    const a = new MockConnection();
+    await server.addConnection(a);
+    deliver(a, { kind: "agent", agent: "agent-a" }); // no `secret` field at all
+    await flush();
+    assert.strictEqual(server.getConnectionById("agent-a"), a);
+    assert.ok(!a.closed);
+  });
+
+  await t.test("a secret comparison of differing length is rejected, not thrown", async () => {
+    // Regression guard for the constant-time comparison: mismatched-length
+    // secrets must be rejected cleanly, not throw out of timingSafeEqual.
+    const server = new Server(undefined, { secret: "correct-secret" });
+    const a = new MockConnection();
+    await server.addConnection(a);
+    assert.doesNotThrow(() => {
+      deliver(a, { kind: "agent", agent: "agent-a", secret: "short" });
+    });
+    await flush();
+    assert.strictEqual(server.getConnectionById("agent-a"), undefined);
+    assert.ok(a.closed);
+  });
 });
 
 test("Server agent-selection strategies", async (t) => {
   await t.test("first always routes to the first-connected agent", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     server.setStrategy("first");
     const a = new MockConnection();
     const b = new MockConnection();
@@ -190,7 +223,7 @@ test("Server agent-selection strategies", async (t) => {
   });
 
   await t.test("last always routes to the last-connected agent", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     server.setStrategy("last");
     const a = new MockConnection();
     const b = new MockConnection();
@@ -204,7 +237,7 @@ test("Server agent-selection strategies", async (t) => {
   });
 
   await t.test("round-robin cycles through every connected agent in order", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     server.setStrategy("round-robin");
     const a = new MockConnection();
     const b = new MockConnection();
@@ -222,7 +255,7 @@ test("Server agent-selection strategies", async (t) => {
   });
 
   await t.test("random distributes requests across connected agents", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     server.setStrategy("random");
     const a = new MockConnection();
     const b = new MockConnection();
@@ -240,7 +273,7 @@ test("Server agent-selection strategies", async (t) => {
   });
 
   await t.test("most-recent routes to whichever agent connected most recently", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     const a = new MockConnection();
     await server.addConnection(a);
     // Force a distinct connectedAt timestamp for the second connection —
@@ -256,7 +289,7 @@ test("Server agent-selection strategies", async (t) => {
   });
 
   await t.test("last-used routes to whichever agent most recently completed a request/response cycle", async () => {
-    const server = new Server();
+    const server = new Server(undefined, { allowUnauthenticatedAgents: true });
     server.setStrategy("round-robin");
     const a = new MockConnection();
     const b = new MockConnection();
@@ -290,7 +323,7 @@ test("Server agent-selection strategies", async (t) => {
 
   await t.test("with no agents connected, commit() falls back to the default handler", async () => {
     const defaultResponse = new Response("fallback", { status: 200 });
-    const server = new Server(() => defaultResponse);
+    const server = new Server(() => defaultResponse, { allowUnauthenticatedAgents: true });
     const response = await new Promise((resolve, reject) => {
       server.commit(makeRequest(), {}, resolve, reject);
     });

@@ -38,7 +38,7 @@ class MockWebSocket extends EventTarget {
 };
 
 Deno.test("Server", async () => {
-  const server = new Server();
+  const server = new Server(undefined, { allowUnauthenticatedAgents: true });
   assertEquals(typeof server, "object", "Server should be created");
 });
 

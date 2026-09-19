@@ -14,7 +14,7 @@ test("Integration tests", async (t) => {
   t.beforeEach(async () => {
     currentPort = port++;
     console.log(`Setting up server and agent on port ${currentPort}...`);
-    server = new Server();
+    server = new Server(undefined, { allowUnauthenticatedAgents: true });
     await server.listen(currentPort);
     agent = new Agent(`ws://localhost:${currentPort}`);
     // Wait for the agent's WebSocket handshake to actually register with

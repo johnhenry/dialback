@@ -6,6 +6,7 @@ import {
 } from "./util/index.mjs";
 import http from "http";
 import { WebSocketServer } from "ws";
+import { timingSafeEqual } from "node:crypto";
 
 /** @type {Set<import('./types/types.d.ts').ServerStrategy>} */
 const serverStrategies = new Set([
@@ -62,6 +63,8 @@ const Server = class {
   #boundFetch = null;
   /** @type {string | null} */
   #secret = null;
+  /** @type {boolean} */
+  #allowUnauthenticatedAgents = false;
   /** @type {http.Server | null} */
   #httpServer = null;
   /** @type {WebSocketServer | null} */
@@ -76,8 +79,25 @@ const Server = class {
    * @param {import('./types/types.d.ts').ServerOptions} options
    */
   constructor(defaultHandler = () => new Response(null), options = {}) {
-    const { strategy = "first", secret = null, log = LOG_LEVELS.NONE } =
-      options;
+    const {
+      strategy = "first",
+      secret = null,
+      allowUnauthenticatedAgents = false,
+      log = LOG_LEVELS.NONE,
+    } = options;
+    if (!secret && !allowUnauthenticatedAgents) {
+      // Without a secret, `#handleAgentMessage`'s "agent" case has nothing
+      // to check an incoming handshake against and would silently accept
+      // *any* agent with zero verification. That's a footgun a caller is
+      // unlikely to intend, so it must be opted into explicitly and loudly
+      // rather than falling out of an omitted option.
+      throw new Error(
+        "Server requires a `secret` to authenticate agents (pass " +
+          "`{ secret: '...' }`). If you understand the risk and want to " +
+          "accept any agent with no verification, pass " +
+          "`{ allowUnauthenticatedAgents: true }` explicitly."
+      );
+    }
     this.#id = randId("proxy-");
     this.#defaultHandler = defaultHandler;
     this.#connections = [];
@@ -85,7 +105,27 @@ const Server = class {
     this.#logLevel = log;
     this.strategy = strategy;
     this.#secret = secret;
+    this.#allowUnauthenticatedAgents = allowUnauthenticatedAgents;
     this.#log(LOG_LEVELS.INFO, "Server initialized with ID:", this.#id);
+  }
+
+  /**
+   * Constant-time comparison against the configured secret, so a mismatch
+   * can't be timed to leak how many leading bytes of a guess were correct.
+   * @param {unknown} candidate
+   * @returns {boolean}
+   */
+  #secretMatches(candidate) {
+    const expected = Buffer.from(String(this.#secret));
+    const actual = Buffer.from(String(candidate ?? ""));
+    if (expected.length !== actual.length) {
+      // Still perform a fixed-cost comparison rather than short-circuiting
+      // immediately, so a length mismatch doesn't return measurably faster
+      // than a same-length mismatch.
+      timingSafeEqual(expected, expected);
+      return false;
+    }
+    return timingSafeEqual(expected, actual);
   }
 
   /**
@@ -376,7 +416,7 @@ const Server = class {
     const { kind, id, payload } = message;
     switch (kind) {
       case "agent": {
-        if (this.#secret && message.secret !== this.#secret) {
+        if (this.#secret !== null && !this.#secretMatches(message.secret)) {
           this.#logError(
             "Rejected agent handshake: invalid secret for agent",
             message.agent
