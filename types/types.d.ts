@@ -11,6 +11,7 @@ export type ServerStrategy =
 export interface ServerOptions {
   strategy?: ServerStrategy;
   secret?: string;
+  log?: number;
 }
 
 export interface AgentOptions {
@@ -49,6 +50,10 @@ export interface Server {
   getConnectionById(id: string): Connection | undefined;
   getConnectionByIndex(index: number): Connection | undefined;
   setStrategy(newStrategy: ServerStrategy): void;
+  strategy: ServerStrategy;
+  listen(port: number): Promise<void>;
+  close(): Promise<void>;
+  readonly listening: boolean;
   fetch(
     request: Request | string,
     options?: RequestInit,

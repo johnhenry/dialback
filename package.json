@@ -4,10 +4,10 @@
   "description": "Reverse proxy HTTP requests over web sockets",
   "main": "index.mjs",
   "type": "module",
-  "types": "types/types.dts",
+  "types": "types/types.d.ts",
   "scripts": {
     "test:node": "node --test test/node.test.mjs",
-    "test:deno": "deno test test/deno.test.ts",
+    "test:deno": "deno test --allow-all test/deno.test.ts",
     "test:int": "node test/integration.test.mjs",
     "test:all": "node --run test:node && node --run test:deno ",
     "test": "node --run test:node",
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/johnhenry/proxy-socks.git"
+    "url": "git+https://github.com/johnhenry/leproxy.git"
   },
   "keywords": [
     "websocket",
@@ -30,9 +30,9 @@
   "author": "John Henry",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/johnhenry/proxy-socks/issues"
+    "url": "https://github.com/johnhenry/leproxy/issues"
   },
-  "homepage": "https://github.com/johnhenry/proxy-socks#readme",
+  "homepage": "https://github.com/johnhenry/leproxy#readme",
   "engines": {
     "node": ">=14.0.0"
   },

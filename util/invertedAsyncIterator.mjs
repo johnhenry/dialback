@@ -1,7 +1,7 @@
 /** @type {symbol} */
 const KILLED = Symbol.for("KILLED_INVERTED_ASYNC_ITERATOR");
 
-/** @type {import('../types/types').bufferOverRunStrategies} */
+/** @type {import('../types/types.d.ts').bufferOverRunStrategies} */
 const bufferOverRunStrategies = {
   ERROR: "error",
   DROP: "drop",
@@ -9,7 +9,7 @@ const bufferOverRunStrategies = {
   DIE: "die",
 };
 
-/** @type {Set<import('../types/types').BufferOverRunStrategy>} */
+/** @type {Set<import('../types/types.d.ts').BufferOverRunStrategy>} */
 const bufferOverRunStrategiesValuesSet = new Set(
   Object.values(bufferOverRunStrategies)
 );
@@ -17,7 +17,7 @@ const bufferOverRunStrategiesValuesSet = new Set(
 /**
  * @template T
  * @param {number} [bufferSize]
- * @param {import('../types/types').BufferOverRunStrategy} [bufferOverrunStrategy]
+ * @param {import('../types/types.d.ts').BufferOverRunStrategy} [bufferOverrunStrategy]
  * @returns {[
  *   () => AsyncGenerator<T, void, unknown>,
  *   (data: T) => T,
@@ -52,7 +52,19 @@ const invertedAsyncIterator = (
   };
   const enqueue = (data) => {
     if (resolve) {
-      resolve(data);
+      // Claim (and clear) the pending resolver before calling it. If two
+      // `enqueue()` calls happen synchronously back-to-back — e.g. several
+      // WebSocket messages arriving in the same tick — the generator won't
+      // get a chance to run its microtask continuation and install a fresh
+      // `resolve` between them. Without clearing it here, the second call
+      // would invoke the same (already-settled) resolver again, which is a
+      // silent no-op on an already-resolved Promise: the second message
+      // would be dropped instead of buffered, and any consumer awaiting a
+      // later message would hang forever waiting for data that already
+      // arrived and was discarded.
+      const resolvePending = resolve;
+      resolve = undefined;
+      resolvePending(data);
     } else if (bufferSize < 0) {
       buffer.push(data);
     } else if (buffer.length === bufferSize) {

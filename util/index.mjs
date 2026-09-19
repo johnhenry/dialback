@@ -5,7 +5,19 @@ export { routeEmptyFavicon } from "./routeEmptyFavicon.mjs";
 
 const base64ToBytes = (base64 = "") =>
   Uint8Array.from(atob(base64), (m) => m.codePointAt(0));
-const bytesToBase64 = (bytes = []) => btoa(String.fromCodePoint(...bytes));
+// Spreading the whole `bytes` array into `String.fromCodePoint(...bytes)`
+// blows the call stack for large chunks (engines cap the number of
+// arguments a function call can take, well under 1MB) — e.g. a single
+// large request/response body chunk read from a stream. Process it in
+// bounded-size slices instead so arbitrarily large payloads still encode.
+const bytesToBase64 = (bytes = []) => {
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCodePoint(...bytes.slice(i, i + chunkSize));
+  }
+  return btoa(binary);
+};
 const randId = (prefix = "") => {
   return `${prefix}${Math.random().toString(36).substring(2, 15)}`;
 };

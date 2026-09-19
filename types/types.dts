@@ -1,9 +1,0 @@
-// Type definitions for leproxy
-
-export interface LeproxyOptions {
-  // Add your options here
-}
-
-export declare function createServer(options?: LeproxyOptions): Promise<any>;
-
-// Add more type definitions as needed

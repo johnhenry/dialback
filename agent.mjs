@@ -7,7 +7,7 @@ import {
   randId,
 } from "./util/index.mjs";
 
-/** @type {import('./types/types').LOG_LEVELS} */
+/** @type {import('./types/types.d.ts').LOG_LEVELS} */
 const LOG_LEVELS = {
   NONE: 0,
   ERROR: 1,
@@ -18,10 +18,10 @@ const LOG_LEVELS = {
 
 /**
  * @class
- * @implements {import('./types/types').Agent}
+ * @implements {import('./types/types.d.ts').Agent}
  */
 const Agent = class extends EventEmitter {
-  /** @type {Promise<import('./types/types').Connection> | null} */
+  /** @type {Promise<import('./types/types.d.ts').Connection> | null} */
   #connection = null;
   /** @type {string | null} */
   #id = null;
@@ -48,7 +48,7 @@ const Agent = class extends EventEmitter {
 
   /**
    * @param {string} address
-   * @param {import('./types/types').AgentOptions} options
+   * @param {import('./types/types.d.ts').AgentOptions} options
    */
   constructor(
     address,
@@ -79,7 +79,7 @@ const Agent = class extends EventEmitter {
   /**
    * @param {string} address
    * @param {string | undefined} secret
-   * @returns {Promise<import('./types/types').Connection>}
+   * @returns {Promise<import('./types/types.d.ts').Connection>}
    */
   createConnection(address, secret) {
     return new Promise((success) => {
@@ -93,57 +93,35 @@ const Agent = class extends EventEmitter {
         });
         this.#send = send;
         this.#recieve = recieve;
+        // Request-body writers, keyed by request id, for requests whose
+        // body hasn't finished streaming in yet.
+        //
+        // NOTE: this used to open a *second*, per-request-scoped
+        // `doConnection(connection, {filter, transform})` channel (its own
+        // extra "message" listener) the moment a "request" message was
+        // handled, and consume "request:body"/"request:body:end" there
+        // instead of in this loop. That has a real race: the server can
+        // send "request:body" chunks fast enough (e.g. over a same-process
+        // loopback connection where the incoming body is already buffered)
+        // that they arrive and fire before the per-request listener has
+        // been registered. Since only the *outer* (unfiltered) listener
+        // exists at that point, and this loop below ignores anything that
+        // isn't `kind === "request"`, those early chunks were silently
+        // dropped forever, truncating the reconstructed request body. Using
+        // a single loop with id-keyed lookups (like the server side) avoids
+        // the window entirely: every message is seen by exactly one
+        // listener, in arrival order, regardless of timing.
+        const requestBodyWriters = new Map();
         setTimeout(async () => {
-          let stream = null;
-          let send, recieve;
           for await (const message of this.#recieve) {
-            const { kind, id, payload, request: req } = message;
+            const { kind, id, payload } = message;
             if (kind === "request") {
               let response;
-              [send, recieve] = doConnection(connection, {
-                filter: (x) => x.request === req,
-                transform: (x) => ({ ...x, request: req }),
-              });
               let body = null;
               if (payload.body) {
-                stream = new TransformStream();
+                const stream = new TransformStream();
                 body = stream.readable;
-                setTimeout(async () => {
-                  const writer = stream.writable.getWriter();
-                  for await (const message of recieve) {
-                    const { kind, payload } = message;
-                    if (kind === "request:body") {
-                      writer?.write(
-                        payload.bodyKind === "base64"
-                          ? base64ToBytes(payload.body)
-                          : payload.body
-                      );
-                    } else if (
-                      kind === "request:body:end" ||
-                      kind === "request:end"
-                    ) {
-                      writer?.close();
-                    } else if (kind === "response:body?") {
-                      // read response body
-                      const res = await response;
-                      const reader = res.body.getReader();
-                      let value, done;
-                      while (!done) {
-                        // TODO: bail out if collection empty?
-                        ({ value, done } = await reader.read());
-                        send({
-                          kind: "response:body",
-                          payload: {
-                            body: bytesToBase64(value),
-                            bodyKind: "base64",
-                          },
-                        });
-                      }
-                      //reader.close();
-                      send({ kind: "response:body:end" });
-                    }
-                  }
-                });
+                requestBodyWriters.set(id, stream.writable.getWriter());
               }
 
               let request = new Request(payload.url, {
@@ -157,7 +135,7 @@ const Agent = class extends EventEmitter {
               }
               try {
                 response = this.#handler(request, {
-                  id: req,
+                  id,
                   proxy: { agentId: this.#id, requestId: id },
                   state: new Map(),
                 });
@@ -171,8 +149,6 @@ const Agent = class extends EventEmitter {
                 );
               }
               this.#sessions.set(id, {
-                send,
-                recieve,
                 request,
                 response,
               });
@@ -189,6 +165,7 @@ const Agent = class extends EventEmitter {
                   });
                   send({
                     kind: "response",
+                    id,
                     payload: {
                       headers: Object.fromEntries(response.headers),
                       statusText: response.statusText,
@@ -203,6 +180,7 @@ const Agent = class extends EventEmitter {
                       while (!done) {
                         send({
                           kind: "response:body",
+                          id,
                           payload: {
                             body: bytesToBase64(value),
                             bodyKind: "base64",
@@ -214,7 +192,7 @@ const Agent = class extends EventEmitter {
                         }
                         ({ value, done } = await reader.read());
                       }
-                      send({ kind: "response:body:end" });
+                      send({ kind: "response:body:end", id });
                     });
                   }
                 }
@@ -225,6 +203,7 @@ const Agent = class extends EventEmitter {
                 this.emit("error", err);
                 send({
                   kind: "response",
+                  id,
                   payload: {
                     headers: {},
                     statusText: err?.message || "Internal Server Error",
@@ -233,6 +212,17 @@ const Agent = class extends EventEmitter {
                   },
                 });
               });
+            } else if (kind === "request:body") {
+              const writer = requestBodyWriters.get(id);
+              writer?.write(
+                payload.bodyKind === "base64"
+                  ? base64ToBytes(payload.body)
+                  : payload.body
+              );
+            } else if (kind === "request:body:end" || kind === "request:end") {
+              const writer = requestBodyWriters.get(id);
+              writer?.close();
+              requestBodyWriters.delete(id);
             }
           }
         });
@@ -258,7 +248,7 @@ const Agent = class extends EventEmitter {
   }
 
   /**
-   * @returns {Promise<import('./types/types').Connection>}
+   * @returns {Promise<import('./types/types.d.ts').Connection>}
    */
   get connection() {
     return this.#connection;

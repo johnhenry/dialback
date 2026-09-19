@@ -104,20 +104,29 @@ new Server(defaultHandler, options)
 
 - `defaultHandler`: A function that returns a `Response` object when no agent is available to handle the request.
 - `options`: An object with the following properties:
-  - `strategy` (optional): A string specifying the agent selection strategy. Default is "first".
+  - `strategy` (optional): A string specifying the agent selection strategy. Default is "first". One of `"first"`, `"last"`, `"random"`, `"round-robin"`, `"last-used"` (the agent that most recently completed a request/response cycle), or `"most-recent"` (the agent that most recently connected).
   - `secret` (optional): A string used for authentication between the server and agents.
+  - `log` (optional): An integer log level (0-4, matching `LOG_LEVELS`/`Agent`'s `log` option). Default is `0` (no logging).
 
 #### Methods
 
-- `addConnection(connection)`: Adds a WebSocket connection to the server.
-- `removeConnection(connection)`: Removes a WebSocket connection from the server.
+- `addConnection(connection)`: Registers a WebSocket-like connection (anything implementing `send`/`addEventListener`/`close`) as a candidate agent connection and starts consuming its messages. Returns a `Promise` that resolves to the connection.
+- `removeConnection(connection)`: Unregisters a connection. Any request still in flight against it is rejected instead of hanging forever.
+- `removeConnectionById(id)`: Removes the connection registered under the given agent id (the `agent` field from that connection's handshake).
+- `removeConnectionByIndex(index)`: Removes the connection at the given position in connection order.
+- `getConnectionById(id)`: Returns the connection registered under the given agent id, or `undefined`.
+- `getConnectionByIndex(index)`: Returns the connection at the given position, or `undefined`.
 - `fetch(request)`: Handles an incoming HTTP request and returns a `Promise` that resolves to a `Response` object.
-- `setStrategy(newStrategy)`: Sets the agent selection strategy.
+- `setStrategy(newStrategy)`: Sets the agent selection strategy; throws on an unrecognized value.
 
 #### Properties
 
-- `strategy`: Gets or sets the current agent selection strategy.
+- `strategy`: Gets or sets the current agent selection strategy (setting it validates the same way as `setStrategy`).
 - `fetch`: A bound version of the `fetch` method that can be used directly with HTTP server libraries.
+
+#### A note on authentication
+
+The `secret` option is a single shared secret compared against whatever every agent sends in its handshake — there's no per-agent identity, rotation, or session/token model. That's an intentional simplification for now, not an oversight; if you need per-agent credentials or anything more sophisticated, put this behind your own auth layer (e.g. a reverse proxy or VPN in front of the WebSocket port) rather than expecting `leproxy` to provide it.
 
 ### Agent
 
