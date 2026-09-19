@@ -5,10 +5,15 @@
   "main": "index.mjs",
   "type": "module",
   "types": "types/types.d.ts",
+  "exports": {
+    ".": "./index.mjs",
+    "./browsermesh": "./transports/browsermesh.mjs"
+  },
   "scripts": {
     "test:node": "node --test test/node.test.mjs",
     "test:deno": "deno test --allow-all test/deno.test.ts",
     "test:int": "node test/integration.test.mjs",
+    "test:browsermesh": "node --test test/browsermesh.test.mjs",
     "test:all": "node --run test:node && node --run test:deno ",
     "test": "node --run test:node",
     "start": "node server.mjs"
@@ -38,5 +43,21 @@
   },
   "dependencies": {
     "ws": "^8.18.0"
+  },
+  "peerDependencies": {
+    "@johnhenry/browsermesh-netway": ">=0.0.1",
+    "@johnhenry/browsermesh-primitives": ">=0.0.1"
+  },
+  "peerDependenciesMeta": {
+    "@johnhenry/browsermesh-netway": {
+      "optional": true
+    },
+    "@johnhenry/browsermesh-primitives": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@johnhenry/browsermesh-netway": "^0.0.1",
+    "@johnhenry/browsermesh-primitives": "^0.0.1"
   }
 }
