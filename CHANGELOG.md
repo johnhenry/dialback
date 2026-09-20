@@ -7,6 +7,26 @@ and this project will adhere to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [0.0.1]
+
+### Fixed
+
+- **`package.json`'s `exports["."]` had no `types` condition** (a plain
+  string pointing at `index.mjs`, not `{types, default}`), so any consumer
+  using `moduleResolution: "NodeNext"`/`"Node16"` couldn't resolve this
+  package's types at all -- TypeScript reported "types exist... but could
+  not be resolved when respecting package.json exports." Found while
+  building `@johnhenry/hostable` against a real published install, not a
+  `file:` link. Same bug class already fixed once for `@johnhenry/packfile`.
+- **The Node.js usage example in the README passed a raw `IncomingMessage`
+  directly to `Server#fetch()`**, which throws `"req must be a string or
+  Request"` -- `unBoundFetch()` requires a real `Request` instance or a
+  URL string (verified by reading `server.mjs` directly), and Node's
+  `IncomingMessage` is neither. The Deno example was already correct
+  (`Deno.serve`'s callback hands a real `Request`); only the Node.js one
+  needed a fix. Added a minimal inline `toWebRequest()` conversion to the
+  example rather than introducing a new suggested dependency.
+
 ### Added
 
 - **Renamed to `dialback`, adopted into the `@johnhenry` npm scope.** Previously developed as `leproxy` (itself a rename of the original `proxy-socks`, see below) but never actually published under either name, so this is a clean rename rather than a real migration -- no deprecation notice or version restart needed, no existing installs to redirect. The new name describes the actual mechanism: an `Agent` dials out through a NAT/firewall, and the `Server` dials back through that same connection to reach it.

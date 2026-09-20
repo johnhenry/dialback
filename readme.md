@@ -35,8 +35,20 @@ import { WebSocketServer } from 'ws';
 
 const server = new Server(() => new Response("no responder", { status: 500 }));
 
+// Server#fetch() requires a real Request instance (or a URL string) --
+// Node's IncomingMessage isn't one, so convert it first.
+function toWebRequest(req) {
+  const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  const init = { method: req.method, headers: req.headers };
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    init.body = req;
+    init.duplex = "half";
+  }
+  return new Request(url, init);
+}
+
 const httpServer = http.createServer(async (req, res) => {
-  const response = await server.fetch(req);
+  const response = await server.fetch(toWebRequest(req));
   res.writeHead(response.status, response.statusText, Object.fromEntries(response.headers));
   response.body.pipe(res);
 });
