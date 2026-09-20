@@ -1,11 +1,11 @@
 import { Server } from "../index.mjs";
 
-// A real deployment should set LEPROXY_SECRET to a strong, unguessable
+// A real deployment should set DIALBACK_SECRET to a strong, unguessable
 // value shared out-of-band with each Agent; the fallback below is only for
 // running this demo standalone.
 const server = new Server(
   () => new Response("no responder", { status: 500 }), // TODO: can 'null' be used here? nothing?
-  { secret: process.env.LEPROXY_SECRET ?? "demo-secret-change-me" }
+  { secret: process.env.DIALBACK_SECRET ?? "demo-secret-change-me" }
 );
 
 // Single Endpoint
