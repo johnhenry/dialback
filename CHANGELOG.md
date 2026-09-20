@@ -7,6 +7,19 @@ and this project will adhere to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [0.0.3]
+
+### Fixed
+
+- **`Server`'s `defaultHandler`/`AgentOptions.abort` were typed as
+  `() => Response` (synchronous only)**, but the real runtime accepts
+  async handlers fine (`resolve(this.#defaultHandler(request))` in
+  `server.mjs` -- `resolve()` unwraps a returned `Promise` the same way
+  any Promise executor does). Widened both to `() => Response |
+  Promise<Response>`. Found while building `@johnhenry/hostable`, whose
+  `Upstream app={dialbackServer}` integration test uses an async
+  `defaultHandler`.
+
 ## [0.0.2]
 
 ### Fixed

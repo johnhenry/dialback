@@ -1,6 +1,6 @@
 {
   "name": "@johnhenry/dialback",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Reverse proxy HTTP requests over web sockets -- an agent dials out, the server dials back through that connection to reach it",
   "main": "index.mjs",
   "type": "module",

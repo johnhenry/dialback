@@ -24,7 +24,7 @@ export interface ServerOptions {
 export interface AgentOptions {
   reconnect?: number;
   log?: number;
-  abort?: () => Response;
+  abort?: () => Response | Promise<Response>;
   secret?: string;
   /**
    * Pluggable connection factory, used instead of `new WebSocket(address)`
@@ -85,7 +85,7 @@ export interface InvertedAsyncIteratorOptions {
  * `Server`/`Agent` directly), so they were phantom declarations.
  */
 export declare class Server {
-  constructor(defaultHandler?: () => Response, options?: ServerOptions);
+  constructor(defaultHandler?: () => Response | Promise<Response>, options?: ServerOptions);
   addConnection(connection: Connection): Promise<Connection>;
   removeConnection(connection: Connection): void;
   removeConnectionById(id: string): void;
