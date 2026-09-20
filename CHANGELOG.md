@@ -7,6 +7,22 @@ and this project will adhere to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [0.0.2]
+
+### Fixed
+
+- **`types/types.d.ts` declared `Server`/`Agent` as plain `interface`s**
+  (instance shape only, no construct signature), but both are real,
+  constructable classes at runtime (`const Server = class { ... }` in
+  `server.mjs`/`agent.mjs`) -- so `new Server(...)`/`new Agent(...)`
+  failed to type-check for any TypeScript consumer with `"'Server' only
+  refers to a type, but is being used as a value here."` Changed both to
+  `declare class` with real constructor signatures. Also removed
+  `createServer`/`createAgent`, two factory-function declarations that
+  don't correspond to anything in the real runtime code (`index.mjs` only
+  ever exports `Server`/`Agent` directly) -- phantom API surface, found
+  while cross-checking the type declarations against the actual exports.
+
 ## [0.0.1]
 
 ### Fixed

@@ -71,7 +71,21 @@ export interface InvertedAsyncIteratorOptions {
   bufferOverrunStrategy?: BufferOverRunStrategy;
 }
 
-export interface Server {
+/**
+ * `Server`/`Agent` are real, constructable classes at runtime
+ * (`const Server = class { ... }` in server.mjs/agent.mjs, `new
+ * Server(...)`/`new Agent(...)` -- confirmed by reading both files
+ * directly), not plain interfaces -- declared as `declare class` here so
+ * `new Server(...)` actually type-checks for consumers (previously
+ * declared as bare `interface`s with no construct signature, which made
+ * TypeScript reject `new Server(...)` with "only refers to a type, but is
+ * being used as a value here"). `createServer`/`createAgent` factory
+ * functions, previously declared below, were removed -- they don't exist
+ * anywhere in the real runtime code (`index.mjs` only ever exports
+ * `Server`/`Agent` directly), so they were phantom declarations.
+ */
+export declare class Server {
+  constructor(defaultHandler?: () => Response, options?: ServerOptions);
   addConnection(connection: Connection): Promise<Connection>;
   removeConnection(connection: Connection): void;
   removeConnectionById(id: string): void;
@@ -90,21 +104,14 @@ export interface Server {
   ): Promise<Response>;
 }
 
-export interface Agent {
-  connection: Promise<Connection>;
+export declare class Agent {
+  constructor(address: string, options?: AgentOptions);
+  readonly connection: Promise<Connection>;
   serve(
     handler: (request: Request, options: { id: string }) => Promise<Response>
   ): void;
+  close(): Promise<void>;
 }
-
-export declare function createServer(
-  defaultHandler?: () => Response,
-  options?: ServerOptions
-): Server;
-export declare function createAgent(
-  address: string,
-  options?: AgentOptions
-): Agent;
 
 export declare function doConnection(
   connection: Connection,
