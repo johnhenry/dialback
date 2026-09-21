@@ -47,7 +47,7 @@
   },
   "homepage": "https://opensource.johnhenry.me/dialback/",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=26.0.0"
   },
   "dependencies": {
     "ws": "^8.18.0"

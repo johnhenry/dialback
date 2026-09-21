@@ -1,6 +1,8 @@
 # dialback
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![npm version](https://img.shields.io/npm/v/%40johnhenry%2Fdialback.svg)](https://www.npmjs.com/package/@johnhenry/dialback)
+[![CI](https://github.com/johnhenry/dialback/actions/workflows/ci.yml/badge.svg)](https://github.com/johnhenry/dialback/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/%40johnhenry%2Fdialback.svg)](https://www.npmjs.com/package/@johnhenry/dialback)
 
 <img alt="dialback logo" width="512" height="512" src="./logo.jpeg" style="width:512px;height:512px"/>
 
@@ -15,6 +17,20 @@ label.
 > `0.0.0`.
 
 Request/Response <-HTTP-> [Server] <-WS-> [Agent]
+
+## Contents
+
+- [Quick Start](#quick-start)
+  - [Installation](#installation)
+  - [Usage with Node.js](#usage-with-nodejs)
+  - [Usage with Deno](#usage-with-deno)
+- [API Documentation](#api-documentation)
+  - [Server](#server)
+  - [Agent](#agent)
+  - [Utility Functions](#utility-functions)
+- [Optional: the `dialback/browsermesh` transport](#optional-the-dialbackbrowsermesh-transport)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Quick Start
 
