@@ -4,6 +4,8 @@
 [![CI](https://github.com/johnhenry/dialback/actions/workflows/ci.yml/badge.svg)](https://github.com/johnhenry/dialback/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/%40johnhenry%2Fdialback.svg)](https://www.npmjs.com/package/@johnhenry/dialback)
 
+Full documentation: [opensource.johnhenry.me/dialback](https://opensource.johnhenry.me/dialback/)
+
 <img alt="dialback logo" width="512" height="512" src="./logo.jpeg" style="width:512px;height:512px"/>
 
 Library for creating a reverse proxy over websockets: an `Agent` dials out
@@ -28,7 +30,9 @@ Request/Response <-HTTP-> [Server] <-WS-> [Agent]
   - [Server](#server)
   - [Agent](#agent)
   - [Utility Functions](#utility-functions)
+- [Security model](#security-model)
 - [Optional: the `dialback/browsermesh` transport](#optional-the-dialbackbrowsermesh-transport)
+- [Family](#family)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -198,6 +202,48 @@ new Agent(address, options)
 
 A utility function that creates a WebSocket connection from an HTTP request. This function is primarily used in Deno environments.
 
+## Security model
+
+`Server` gates every connecting agent behind a single shared secret before
+it's ever handed to application code. That's the whole boundary the core
+transport draws -- everything past the handshake (which requests go to
+which agent, what those requests contain) is unauthenticated at this layer.
+
+**What dialback guarantees:**
+
+- **Every agent handshake is checked against `secret`.** The comparison
+  uses `node:crypto`'s `timingSafeEqual` (constant-time), not `!==`, so a
+  wrong guess can't be timed to leak how many leading bytes matched.
+- **Authentication cannot be silently skipped.** `new Server(handler,
+  options)` throws unless either `secret` is set or
+  `allowUnauthenticatedAgents: true` is passed explicitly -- there is no
+  code path that ends up accepting unverified agents by omission. See
+  ["A note on authentication"](#a-note-on-authentication) above.
+- **A request in flight against a removed connection is rejected, not left
+  hanging.** `removeConnection()`/`removeConnectionById()` reject any
+  pending request against that agent instead of leaving the caller to time
+  out.
+
+**What is still yours:**
+
+- **The `secret` model has no per-agent identity, rotation, or session
+  model.** Every agent presents the same string; there's no way to tell
+  agents apart at the auth layer, and revoking one agent means rotating the
+  secret for all of them. If you need per-agent credentials, put dialback
+  behind your own auth layer (a reverse proxy or VPN in front of the
+  WebSocket port), or use the [`dialback/browsermesh`
+  transport](#optional-the-dialbackbrowsermesh-transport) below, which
+  replaces the shared secret with real per-agent Ed25519 identity. Tracked
+  as a possible core replacement in dialback #2.
+- **Transport confidentiality is your deployment's responsibility.**
+  dialback does not manage TLS itself -- run the WebSocket server behind
+  `wss://` (or an equivalent terminating proxy) if the secret or proxied
+  request/response bodies must not be visible on the wire.
+- **`fetch(request)` forwards whatever the selected agent returns.**
+  `Server` does not inspect, sanitize, or rate-limit request/response
+  bodies -- that's the `defaultHandler`'s and the agent's own handler's
+  job.
+
 ## Optional: the `dialback/browsermesh` transport
 
 `dialback`'s built-in transport is a WebSocket plus a single shared `secret` string, compared against whatever every connecting agent sends. `dialback/browsermesh` is an **optional, additive** module — never imported by `dialback`'s own `index.mjs`/`server.mjs`/`agent.mjs`, so requiring plain `dialback` never touches it — that swaps that in for real, per-agent Ed25519 identity, built on [`@johnhenry/browsermesh-netway`](https://www.npmjs.com/package/@johnhenry/browsermesh-netway) (virtual networking: `StreamSocket`/`VirtualNetwork`/`Listener`) and [`@johnhenry/browsermesh-primitives`](https://www.npmjs.com/package/@johnhenry/browsermesh-primitives) (`PodIdentity`, an Ed25519 keypair whose `podId` is a base64url hash of its public key).
@@ -259,6 +305,27 @@ This handshake is intentionally **one-directional** — the listener authenticat
 
 - **No real backpressure signal.** `StreamSocket` has no `bufferedAmount`-equivalent — `write()` either succeeds or throws once the peer's buffer has already overflowed, with no graduated "getting full" signal in between. This transport's `Connection.bufferedAmount` always reports `0`, so `agent.mjs`'s/`server.mjs`'s backpressure-wait loops never actually block on it; writes are attempted eagerly and fail (loudly) only once the peer is already overwhelmed.
 - **No mutual authentication.** As above, the connecting agent does not cryptographically verify the listener.
+
+## Family
+
+dialback isn't just a standalone WebSocket reverse proxy -- its optional
+transport layer is the designed consumer of two sibling packages' identity
+and networking primitives.
+
+- **[`@johnhenry/browsermesh-primitives`](https://github.com/johnhenry/browsermesh)**
+  -- `PodIdentity` (an Ed25519 keypair whose `podId` is a base64url hash of
+  its public key) is what `dialback/browsermesh`'s handshake signs and
+  verifies, replacing the built-in transport's single shared `secret`
+  string with real per-agent identity. A real dependency on
+  `@johnhenry/browsermesh-primitives`, **not** the other way around -- it's
+  an optional `peerDependency`, never imported by plain `dialback`.
+- **[`@johnhenry/browsermesh-netway`](https://github.com/johnhenry/browsermesh)**
+  -- `VirtualNetwork`/`StreamSocket`/`Listener` are the virtual networking
+  layer `dialback/browsermesh`'s transport runs Server/Agent connections
+  over, in place of a raw WebSocket. Same optional-`peerDependency`
+  relationship as above. See
+  [Optional: the `dialback/browsermesh` transport](#optional-the-dialbackbrowsermesh-transport)
+  for the full usage and handshake protocol.
 
 ## Contributing
 

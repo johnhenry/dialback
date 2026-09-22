@@ -7,7 +7,7 @@ and this project will adhere to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
-## [0.0.3]
+## [0.0.3] - 2026-09-19
 
 ### Fixed
 
@@ -20,7 +20,7 @@ and this project will adhere to [Semantic Versioning](https://semver.org/spec/v2
   `Upstream app={dialbackServer}` integration test uses an async
   `defaultHandler`.
 
-## [0.0.2]
+## [0.0.2] - 2026-09-19
 
 ### Fixed
 
@@ -36,7 +36,7 @@ and this project will adhere to [Semantic Versioning](https://semver.org/spec/v2
   ever exports `Server`/`Agent` directly) -- phantom API surface, found
   while cross-checking the type declarations against the actual exports.
 
-## [0.0.1]
+## [0.0.1] - 2026-09-19
 
 ### Fixed
 
