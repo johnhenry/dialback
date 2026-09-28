@@ -7,6 +7,7 @@ import {
 import http from "http";
 import { WebSocketServer } from "ws";
 import { timingSafeEqual } from "node:crypto";
+import { toWebRequest, writeWebResponse } from "@johnhenry/webwire";
 
 /** @type {Set<import('./types/types.d.ts').ServerStrategy>} */
 const serverStrategies = new Set([
@@ -161,56 +162,34 @@ const Server = class {
 
       let request;
       try {
-        // `req.url` from Node's `http` module is a relative path (e.g.
-        // "/foo?bar"). The Web `Request` constructor requires an absolute
-        // URL, so build one from the Host header first. This has to happen
-        // inside a try/catch of its own (rather than relying on the outer
-        // try/catch below) so a malformed request can never escape
-        // uncaught and hang the client.
-        // `X-Forwarded-Host` (standard reverse-proxy convention) takes
-        // priority over `Host` so the agent sees the URL the original
-        // client intended, not this proxy's own host:port.
-        const forwardedHost = req.headers["x-forwarded-host"];
-        const host =
-          (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost) ||
-          req.headers.host ||
-          "localhost";
-        const url = new URL(req.url, `http://${host}`).toString();
-        const requestInit = {
-          method: req.method,
-          headers: req.headers,
-        };
-        // A Request with GET/HEAD method cannot carry a body.
-        if (req.method !== "GET" && req.method !== "HEAD") {
-          requestInit.body = req;
-          requestInit.duplex = "half";
-        }
-        request = new Request(url, requestInit);
+        // This has to happen inside a try/catch of its own (rather than
+        // relying on the outer try/catch below) so a malformed request can
+        // never escape uncaught and hang the client. `hostHeaders` keeps
+        // this proxy's original priority: `X-Forwarded-Host` (standard
+        // reverse-proxy convention) before `Host`, so the agent sees the
+        // URL the original client intended, not this proxy's own host:port.
+        request = toWebRequest(req, { hostHeaders: ["x-forwarded-host", "host"] });
       } catch (error) {
         this.#logError("Error constructing request:", error);
-        res.writeHead(500);
+        res.writeHead(Number.isInteger(error?.status) ? error.status : 500);
         res.end("Internal Server Error");
         return;
       }
 
       try {
         const response = await this.#boundFetch(request);
-        res.writeHead(
-          response.status,
-          response.statusText,
-          Object.fromEntries(response.headers)
-        );
-        if (response.body) {
-          for await (const chunk of response.body) {
-            res.write(chunk);
-          }
-        }
-        res.end();
+        await writeWebResponse(response, res, {
+          onError: (err) => this.#logError("Error streaming response body:", err),
+        });
         this.#log(LOG_LEVELS.DEBUG, "Response sent to client");
       } catch (error) {
         this.#logError("Error handling request:", error);
-        res.writeHead(500);
-        res.end("Internal Server Error");
+        if (!res.headersSent) {
+          res.writeHead(500);
+          res.end("Internal Server Error");
+        } else {
+          res.destroy(error);
+        }
       }
     });
 

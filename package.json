@@ -50,6 +50,7 @@
     "node": ">=26.0.0"
   },
   "dependencies": {
+    "@johnhenry/webwire": "^0.0.0",
     "ws": "^8.18.0"
   },
   "peerDependencies": {
