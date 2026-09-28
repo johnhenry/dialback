@@ -326,6 +326,13 @@ and networking primitives.
   relationship as above. See
   [Optional: the `dialback/browsermesh` transport](#optional-the-dialbackbrowsermesh-transport)
   for the full usage and handshake protocol.
+- **[`@johnhenry/webwire`](https://github.com/johnhenry/webwire)** -- the
+  Node `req`/`res` <-> Web `Request`/`Response` conversion `Server.listen()`
+  uses. This used to be an independent, hand-rolled copy of the same logic
+  `@johnhenry/leserve` also had (see webwire's own README for the full
+  story); depending on webwire directly, rather than each side maintaining
+  its own copy, fixed a real bug (multi-value response headers like
+  `Set-Cookie` were being silently collapsed to one).
 
 ## Contributing
 

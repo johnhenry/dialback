@@ -7,6 +7,24 @@ and this project will adhere to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Changed
+
+- **`Server.listen()`'s inline Node `req`/`res` <-> Web `Request`/`Response`
+  conversion now uses `@johnhenry/webwire`** (`toWebRequest`/
+  `writeWebResponse`) instead of its own independent, slightly-diverged
+  copy. Fixes a real bug in the process: the old response-writing code did
+  `res.writeHead(status, statusText, Object.fromEntries(response.headers))`,
+  which silently collapses multi-value headers (e.g. repeated `Set-Cookie`)
+  down to just the last one -- `Object.fromEntries()` on a `Headers`
+  iterator can't represent more than one value per key.
+  `writeWebResponse()` sends them as separate header lines instead. The
+  `X-Forwarded-Host`-before-`Host` priority this server relies on (so the
+  agent sees the client-facing host, not this proxy's own) is preserved via
+  webwire's `hostHeaders` option. Verified against both the Node
+  (`test:node`) and Deno (`test:deno`) test suites -- `@johnhenry/webwire`
+  resolves correctly as a bare specifier under Deno's npm compatibility the
+  same way `ws` already does here.
+
 ## [0.0.3] - 2026-09-19
 
 ### Fixed
