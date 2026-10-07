@@ -25,6 +25,21 @@ and this project will adhere to [Semantic Versioning](https://semver.org/spec/v2
   resolves correctly as a bare specifier under Deno's npm compatibility the
   same way `ws` already does here.
 
+## [0.0.4] - 2026-10-06
+
+### Added
+
+- **`@johnhenry/dialback/transports/handshake`** (alias
+  `@johnhenry/dialback/handshake`) is now in the `exports` map, exposing
+  `challengeConnectingPeer` and `respondToChallenge` so consumers no longer
+  deep-import `node_modules/@johnhenry/dialback/transports/handshake.mjs`.
+  Not re-exported from `.`, which stays transport-agnostic.
+
+### Fixed
+
+- Republishing refreshes the npm package metadata: the published 0.0.3 still
+  declared `engines.node >=18`; the repo has required `>=26` since.
+
 ## [0.0.3] - 2026-09-19
 
 ### Fixed

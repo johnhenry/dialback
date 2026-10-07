@@ -35,5 +35,6 @@ jobs:
       gate-commands: |
         npm run test:node
         npm run test:browsermesh
+        npm run test:exports
         npm run test:int
     secrets: inherit

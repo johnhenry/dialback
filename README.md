@@ -299,6 +299,19 @@ serve(async (request) => new Response("Hello there!", { status: 200 }));
 
 Run entirely inside the transport, before either side ever sees a `Connection`: the listener (mirroring how `Server` already validates incoming agents against its `secret` today) sends a random nonce; the connecting peer signs it with its `PodIdentity` and replies with `{ podId, publicKey, signature }`; the listener verifies the signature and that `podId` really is the hash of the supplied `publicKey`, then sends accept or reject. A rejected or malformed handshake closes the connection immediately — it's never wrapped as a `Connection` or handed to `Server#addConnection()`. See `transports/handshake.mjs` for the exact wire format and `transports/framing.mjs` for how `dialback`'s message-oriented protocol is framed (newline-delimited JSON) over `StreamSocket`'s raw byte stream.
 
+#### Using the handshake directly
+
+If you bring your own `StreamSocket` transport instead of using `createBrowsermeshTransport` / `acceptBrowsermeshConnections`, the two halves of the handshake are importable by subpath (no deep import into `node_modules` needed):
+
+```javascript
+import {
+  challengeConnectingPeer, // listener side: challenge, verify, accept/reject
+  respondToChallenge, // connecting side: sign the nonce with your PodIdentity
+} from "@johnhenry/dialback/transports/handshake"; // or the short alias "@johnhenry/dialback/handshake"
+```
+
+Both are deliberately **not** re-exported from the package root, which stays transport-agnostic (the handshake is only meaningful with the optional `@johnhenry/browsermesh-*` peer dependencies). See `transports/handshake.mjs` for signatures and error behaviour.
+
 This handshake is intentionally **one-directional** — the listener authenticates the connecting agent, not the other way around — exactly matching the asymmetry of the existing shared-`secret` model (an agent today has no way to verify the server's secret either). The listener does include its own `podId` in the initial challenge, but only informationally (not signed) — a connecting agent can log/identify which listener it reached, but that isn't cryptographic proof of the listener's identity.
 
 ### Honest limitations
