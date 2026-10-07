@@ -24,5 +24,7 @@ jobs:
         npm run test:node
         npm run test:browsermesh
         npm run test:exports
+        npm run test:browser
+        npm run test:close
         npm run test:int
     secrets: inherit

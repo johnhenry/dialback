@@ -7,6 +7,41 @@ and this project will adhere to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [0.0.6] - 2026-10-07
+
+### Fixed
+
+- **`Server` no longer drags Node-only modules into browser bundles** (#16).
+  `server.mjs` imported `@johnhenry/webwire` (which imports
+  `node:stream/promises`), `http`, `ws` and `node:crypto` at module scope, so a
+  Vite/Rollup bundle containing `Server` failed to build. The HTTP/WebSocket
+  listener behind `Server#listen()` now lives in `util/node-listener.mjs`,
+  reached through a `#node-listener` entry in package.json `imports` (`node`
+  condition: the real listener; any other condition: an import-free stub whose
+  `listen()` rejects with a clear message). The constant-time secret comparison
+  is now plain JS (no `node:crypto`/`Buffer`). Covered by an esbuild
+  browser-bundle test (`npm run test:browser`).
+- **`Server#close()` no longer throws "Server is not listening" in
+  `addConnection`-only mode** (#9). It now always closes and unregisters every
+  agent connection (rejecting in-flight requests), stops the built-in listener
+  only if `listen()` created one, and is safe to call twice. Under `listen()`,
+  agent connections are now closed before the listener is.
+
+### Added
+
+- Types for `@johnhenry/dialback/handshake`, `@johnhenry/dialback/transports/handshake`
+  and `@johnhenry/dialback/browsermesh` (`types/handshake.d.ts`,
+  `types/browsermesh.d.ts`), and `challengeConnectingPeer` /
+  `respondToChallenge` are re-exported from `@johnhenry/dialback/browsermesh`
+  (#10). The `./handshake` subpath itself shipped in 0.0.4. README documents
+  the minimal socket contract.
+
+### Changed
+
+- CI and the publish gate also run `test:browser` and `test:close`. AGENTS.md's
+  release section now describes the publish-from-main flow (the publish
+  workflow has a single trigger: push to `main`).
+
 ## [0.0.5] - 2026-10-07
 
 ### Fixed
