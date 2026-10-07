@@ -14,6 +14,7 @@ jobs:
       gate-commands: |
         npm run test:node
         npm run test:browsermesh
+        npm run test:exports
         npm run test:int
 
   # Deno isn't expressible through the reusable ci.yml (it only sets up a

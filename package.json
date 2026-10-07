@@ -1,6 +1,6 @@
 {
   "name": "@johnhenry/dialback",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Reverse proxy HTTP requests over web sockets -- an agent dials out, the server dials back through that connection to reach it",
   "main": "index.mjs",
   "type": "module",
@@ -10,7 +10,9 @@
       "types": "./types/types.d.ts",
       "default": "./index.mjs"
     },
-    "./browsermesh": "./transports/browsermesh.mjs"
+    "./browsermesh": "./transports/browsermesh.mjs",
+    "./transports/handshake": "./transports/handshake.mjs",
+    "./handshake": "./transports/handshake.mjs"
   },
   "publishConfig": {
     "access": "public",
@@ -21,6 +23,7 @@
     "test:deno": "deno test --allow-all test/deno.test.ts",
     "test:int": "node test/integration.test.mjs",
     "test:browsermesh": "node --test test/browsermesh.test.mjs",
+    "test:exports": "node --test test/exports.test.mjs",
     "test:all": "node --run test:node && node --run test:deno ",
     "test": "node --run test:node",
     "start": "node server.mjs"
