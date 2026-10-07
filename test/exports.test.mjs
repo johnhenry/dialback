@@ -3,7 +3,6 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
@@ -14,7 +13,7 @@ for (const specifier of [
   test(`${specifier} resolves through the exports map to handshake.mjs`, async () => {
     const resolved = import.meta.resolve(specifier);
     assert.ok(
-      fileURLToPath(resolved).endsWith("/transports/handshake.mjs"),
+      resolved.endsWith("/transports/handshake.mjs"),
       `unexpected resolution: ${resolved}`
     );
     const mod = await import(specifier);
