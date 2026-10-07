@@ -1,5 +1,6 @@
 import WebSocket from "ws";
-import EventEmitter from "node:events";
+// Real `node:events` under Node/Deno; a tiny emitter elsewhere (see package.json "imports").
+import EventEmitter from "#events";
 import {
   bytesToBase64,
   base64ToBytes,

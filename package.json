@@ -1,6 +1,6 @@
 {
   "name": "@johnhenry/dialback",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Reverse proxy HTTP requests over web sockets -- an agent dials out, the server dials back through that connection to reach it",
   "main": "index.mjs",
   "type": "module",
@@ -89,6 +89,10 @@
     "#node-listener": {
       "node": "./util/node-listener.mjs",
       "default": "./util/node-listener.browser.mjs"
+    },
+    "#events": {
+      "node": "./util/emitter.node.mjs",
+      "default": "./util/emitter.mjs"
     }
   }
 }
