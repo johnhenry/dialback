@@ -184,4 +184,4 @@ async function acceptOne(socket, server, identity, { timeoutMs, log, onConnectio
   onConnection?.(connection, handshake.podId);
 }
 
-export { StreamSocketConnection };
+export { StreamSocketConnection, challengeConnectingPeer, respondToChallenge };

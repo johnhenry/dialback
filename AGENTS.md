@@ -58,7 +58,8 @@ A change is done when all of the following hold, not just when tests pass:
 
 ## Releases
 
-Bump `version` in `package.json`, add the `CHANGELOG.md` entry, merge, then
-`gh release create v<version>` -- the release event triggers
-`.github/workflows/publish.yml`, which is idempotent (skips if the version
-is already on npm).
+Bump `version` in `package.json`, add the `CHANGELOG.md` entry, and merge to
+`main`. `.github/workflows/publish.yml` triggers on push to `main` only (plus
+manual `workflow_dispatch`): it publishes if that version isn't on npm yet
+(otherwise a clean no-op), then tags `v<version>` and creates the GitHub
+Release itself -- do not also run `gh release create` or push a tag by hand.

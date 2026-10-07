@@ -29,6 +29,23 @@ test("the root entry stays transport-agnostic (no handshake exports)", async () 
 });
 
 test("exports map lists the handshake subpaths", () => {
-  assert.strictEqual(pkg.exports["./transports/handshake"], "./transports/handshake.mjs");
-  assert.strictEqual(pkg.exports["./handshake"], "./transports/handshake.mjs");
+  assert.strictEqual(pkg.exports["./transports/handshake"].default, "./transports/handshake.mjs");
+  assert.strictEqual(pkg.exports["./handshake"].default, "./transports/handshake.mjs");
+});
+
+test("./browsermesh re-exports the handshake functions", async () => {
+  const mesh = await import("@johnhenry/dialback/browsermesh");
+  const hs = await import("@johnhenry/dialback/handshake");
+  assert.strictEqual(mesh.challengeConnectingPeer, hs.challengeConnectingPeer);
+  assert.strictEqual(mesh.respondToChallenge, hs.respondToChallenge);
+});
+
+test("handshake and browsermesh subpaths declare types", () => {
+  assert.strictEqual(pkg.exports["./handshake"].types, "./types/handshake.d.ts");
+  assert.strictEqual(pkg.exports["./transports/handshake"].types, "./types/handshake.d.ts");
+  assert.strictEqual(pkg.exports["./browsermesh"].types, "./types/browsermesh.d.ts");
+  for (const key of ["./handshake", "./browsermesh"]) {
+    const file = new URL("../" + pkg.exports[key].types, import.meta.url);
+    assert.ok(readFileSync(file, "utf8").includes("challengeConnectingPeer"), key);
+  }
 });

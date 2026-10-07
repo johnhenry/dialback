@@ -85,6 +85,13 @@ wss.on('connection', (ws) => {
 httpServer.listen(8082, () => {
   console.log('Server running on http://localhost:8082');
 });
+
+// Shutting down: `close()` is safe in this bring-your-own-listener mode. It
+// closes and unregisters every agent connection and rejects requests still
+// in flight; it only touches an HTTP/WebSocket listener if `server.listen()`
+// created one. Close your own listener yourself.
+// await server.close();
+// wss.close(); httpServer.close();
 ```
 
 2. Create Agent
@@ -129,6 +136,10 @@ Deno.serve({ port: 8082 }, (req) => {
 
 2. Create Agent (Same as Node.js version)
 
+### Usage in a browser bundle
+
+`server.mjs` has no Node built-in imports: the Node-only HTTP/WebSocket listener behind `Server#listen()` is loaded through the package's `#node-listener` import map entry, which resolves to the real listener only under the `node` condition. A browser bundler (Vite, esbuild, Rollup) gets an import-free stub, so a bundle containing `Server` pulls in neither `node:stream/promises` nor `@johnhenry/webwire`. In a page, drive the server with `server.fetch(request)` and `server.addConnection(connection)`; `server.listen()` rejects with an error there. (`Agent` still imports `ws` and `node:events`, so it still needs a bundler shim in the browser.)
+
 ## API Documentation
 
 ### Server
@@ -156,6 +167,8 @@ new Server(defaultHandler, options)
 - `removeConnectionByIndex(index)`: Removes the connection at the given position in connection order.
 - `getConnectionById(id)`: Returns the connection registered under the given agent id, or `undefined`.
 - `getConnectionByIndex(index)`: Returns the connection at the given position, or `undefined`.
+- `listen(port)`: Starts a built-in Node.js HTTP + WebSocket listener. Node only; in a browser bundle it rejects with an error telling you to use `fetch()` + `addConnection()` instead.
+- `close()`: Closes and unregisters every registered agent connection (rejecting requests still in flight) and, if `listen()` was used, stops the listener. Safe to call when you only ever used `addConnection()` (there is no listener to stop), and safe to call more than once.
 - `fetch(request)`: Handles an incoming HTTP request and returns a `Promise` that resolves to a `Response` object.
 - `setStrategy(newStrategy)`: Sets the agent selection strategy; throws on an unrecognized value.
 
@@ -310,7 +323,25 @@ import {
 } from "@johnhenry/dialback/transports/handshake"; // or the short alias "@johnhenry/dialback/handshake"
 ```
 
-Both are deliberately **not** re-exported from the package root, which stays transport-agnostic (the handshake is only meaningful with the optional `@johnhenry/browsermesh-*` peer dependencies). See `transports/handshake.mjs` for signatures and error behaviour.
+They are also re-exported from `@johnhenry/dialback/browsermesh`, and both subpaths ship types (`types/handshake.d.ts`, `types/browsermesh.d.ts`). They are deliberately **not** re-exported from the package root, which stays transport-agnostic (the handshake is only meaningful with the optional `@johnhenry/browsermesh-primitives` peer dependency; `@johnhenry/browsermesh-netway` is not needed). See `transports/handshake.mjs` for signatures and error behaviour.
+
+The socket you pass in needs only two methods, so the handshake runs over a plain WebSocket, a `MessagePort`, or an in-memory pair, not just a netway `StreamSocket`:
+
+```typescript
+interface HandshakeSocket {
+  read(): Promise<Uint8Array | null>; // next chunk, or null at end of stream
+  write(bytes: Uint8Array): Promise<unknown> | unknown;
+  close?(): Promise<unknown> | unknown;
+}
+```
+
+```javascript
+// listener side, e.g. in your own WebSocket server's "connection" handler
+const { podId, reader } = await challengeConnectingPeer(socket, serverIdentity);
+// connecting side
+await respondToChallenge(socket, agentIdentity);
+```
+
 
 This handshake is intentionally **one-directional** — the listener authenticates the connecting agent, not the other way around — exactly matching the asymmetry of the existing shared-`secret` model (an agent today has no way to verify the server's secret either). The listener does include its own `podId` in the initial challenge, but only informationally (not signed) — a connecting agent can log/identify which listener it reached, but that isn't cryptographic proof of the listener's identity.
 

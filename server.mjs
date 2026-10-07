@@ -4,10 +4,9 @@ import {
   randId,
   doConnection,
 } from "./util/index.mjs";
-import http from "http";
-import { WebSocketServer } from "ws";
-import { timingSafeEqual } from "node:crypto";
-import { toWebRequest, writeWebResponse } from "@johnhenry/webwire";
+// Resolved via package.json "imports": real Node listener under the `node`
+// condition, an import-free stub everywhere else (browser bundles).
+import { createNodeListener } from "#node-listener";
 
 /** @type {Set<import('./types/types.d.ts').ServerStrategy>} */
 const serverStrategies = new Set([
@@ -66,10 +65,8 @@ const Server = class {
   #secret = null;
   /** @type {boolean} */
   #allowUnauthenticatedAgents = false;
-  /** @type {http.Server | null} */
-  #httpServer = null;
-  /** @type {WebSocketServer | null} */
-  #wss = null;
+  /** @type {{ listen: (port: number) => Promise<void>, close: () => Promise<void> } | null} */
+  #listener = null;
   /** @type {boolean} */
   #listening = false;
   /** @type {number} */
@@ -117,16 +114,18 @@ const Server = class {
    * @returns {boolean}
    */
   #secretMatches(candidate) {
-    const expected = Buffer.from(String(this.#secret));
-    const actual = Buffer.from(String(candidate ?? ""));
-    if (expected.length !== actual.length) {
-      // Still perform a fixed-cost comparison rather than short-circuiting
-      // immediately, so a length mismatch doesn't return measurably faster
-      // than a same-length mismatch.
-      timingSafeEqual(expected, expected);
-      return false;
-    }
-    return timingSafeEqual(expected, actual);
+    const encoder = new TextEncoder();
+    const expected = encoder.encode(String(this.#secret));
+    const actual = encoder.encode(String(candidate ?? ""));
+    // Always walk `expected.length` bytes. On a length mismatch compare
+    // `expected` against itself (result discarded) so the mismatch doesn't
+    // return measurably faster than a same-length mismatch. Pure JS rather
+    // than `node:crypto`'s `timingSafeEqual` so this file has no Node
+    // built-in imports and bundles for the browser.
+    const other = expected.length === actual.length ? actual : expected;
+    let diff = 0;
+    for (let i = 0; i < expected.length; i++) diff |= expected[i] ^ other[i];
+    return diff === 0 && expected.length === actual.length;
   }
 
   /**
@@ -157,89 +156,45 @@ const Server = class {
       throw new Error("Server is already listening");
     }
 
-    this.#httpServer = http.createServer(async (req, res) => {
-      this.#log(LOG_LEVELS.DEBUG, "Received HTTP request:", req.method, req.url);
-
-      let request;
-      try {
-        // This has to happen inside a try/catch of its own (rather than
-        // relying on the outer try/catch below) so a malformed request can
-        // never escape uncaught and hang the client. `hostHeaders` keeps
-        // this proxy's original priority: `X-Forwarded-Host` (standard
-        // reverse-proxy convention) before `Host`, so the agent sees the
-        // URL the original client intended, not this proxy's own host:port.
-        request = toWebRequest(req, { hostHeaders: ["x-forwarded-host", "host"] });
-      } catch (error) {
-        this.#logError("Error constructing request:", error);
-        res.writeHead(Number.isInteger(error?.status) ? error.status : 500);
-        res.end("Internal Server Error");
-        return;
-      }
-
-      try {
-        const response = await this.#boundFetch(request);
-        await writeWebResponse(response, res, {
-          onError: (err) => this.#logError("Error streaming response body:", err),
-        });
-        this.#log(LOG_LEVELS.DEBUG, "Response sent to client");
-      } catch (error) {
-        this.#logError("Error handling request:", error);
-        if (!res.headersSent) {
-          res.writeHead(500);
-          res.end("Internal Server Error");
-        } else {
-          res.destroy(error);
-        }
-      }
+    const listener = createNodeListener({
+      fetch: this.#boundFetch,
+      addConnection: (connection) => this.addConnection(connection),
+      removeConnection: (connection) => this.removeConnection(connection),
+      log: (level, ...args) => this.#log(level, ...args),
+      logError: (...args) => this.#logError(...args),
+      levels: LOG_LEVELS,
     });
-
-    this.#wss = new WebSocketServer({ server: this.#httpServer });
-
-    this.#wss.on("connection", (ws) => {
-      this.#log(LOG_LEVELS.INFO, "New WebSocket connection established");
-      this.addConnection(ws);
-      ws.on("close", () => {
-        this.#log(LOG_LEVELS.INFO, "WebSocket connection closed");
-        this.removeConnection(ws);
-      });
-    });
-
-    await new Promise((resolve) => {
-      this.#httpServer.listen(port, () => {
-        this.#listening = true;
-        this.#log(LOG_LEVELS.INFO, "Server listening on port", port);
-        resolve();
-      });
-    });
+    await listener.listen(port);
+    this.#listener = listener;
+    this.#listening = true;
   }
 
   /**
+   * Shut the server down. Safe in both modes: if `listen()` was used it
+   * also stops the HTTP/WebSocket listener; either way every registered
+   * agent connection is closed and unregistered, and tunnelled requests
+   * still in flight are rejected. Calling it again (or on a server that was
+   * only ever used through `addConnection()`) is a no-op beyond that.
    * @returns {Promise<void>}
    */
   async close() {
-    if (!this.#listening) {
-      throw new Error("Server is not listening");
+    // Connections first: closing the listener while upgraded sockets are
+    // still open can otherwise leave it waiting on them.
+    for (const connection of [...this.#connections]) {
+      const record = this.#agents.get(connection);
+      this.removeConnection(connection);
+      try {
+        record?.close();
+      } catch (error) {
+        this.#logError("Error closing agent connection:", error);
+      }
     }
 
-    this.#log(LOG_LEVELS.INFO, "Closing WebSocket server");
-    await new Promise((resolve, reject) => {
-      this.#wss.close((err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-
-    this.#log(LOG_LEVELS.INFO, "Closing HTTP server");
-    await new Promise((resolve, reject) => {
-      this.#httpServer.close((err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-
+    const listener = this.#listener;
+    if (!listener) return;
+    this.#listener = null;
     this.#listening = false;
-    this.#httpServer = null;
-    this.#wss = null;
+    await listener.close();
     this.#log(LOG_LEVELS.INFO, "Server closed");
   }
 
