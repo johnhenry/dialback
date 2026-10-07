@@ -7,6 +7,23 @@ and this project will adhere to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [0.0.7] - 2026-10-07
+
+### Fixed
+
+- **The whole root entry (and `dialback/browsermesh`) now bundles for the browser
+  with no Node built-ins** (#16, follow-up to 0.0.6). 0.0.6 made `server.mjs`
+  bundle-safe, but `agent.mjs` and `transports/stream-socket-connection.mjs`
+  still imported `node:events`, so a bundle of `import { Server } from
+  "@johnhenry/dialback"` (which also pulls in `Agent`) still failed. The
+  EventEmitter base class now comes from a `#events` entry in package.json
+  `imports`: `node:events` under the `node` condition (Node and Deno unchanged),
+  a minimal built-in emitter (`util/emitter.mjs`, same on/once/off/emit
+  semantics including "unhandled `error` throws") otherwise. The esbuild bundle
+  test now covers `index.mjs` and `transports/browsermesh.mjs`. The default
+  `ws`-based `Agent` transport still does not work in a browser (use a
+  `transport`); that is tracked in #6.
+
 ## [0.0.6] - 2026-10-07
 
 ### Fixed

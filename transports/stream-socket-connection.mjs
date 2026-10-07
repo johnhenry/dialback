@@ -1,4 +1,5 @@
-import EventEmitter from "node:events";
+// Real `node:events` under Node/Deno; a tiny emitter elsewhere (see package.json "imports").
+import EventEmitter from "#events";
 import { encodeFrame, FrameReader } from "./framing.mjs";
 
 /**

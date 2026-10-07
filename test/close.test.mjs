@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert";
 import { EventEmitter } from "node:events";
 import { createServer } from "node:http";
-import { WebSocketServer, WebSocket } from "ws";
+import { WebSocketServer } from "ws";
 import { Server, Agent } from "../index.mjs";
 
 class FakeSocket extends EventEmitter {

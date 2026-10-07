@@ -49,3 +49,47 @@ test("under the `node` condition the real listener is bundled (control)", async 
   const inputs = Object.keys(result.metafile.inputs);
   assert.ok(inputs.some((i) => i.endsWith("util/node-listener.mjs")), inputs.join(", "));
 });
+
+// The whole root entry (Agent included) and the browsermesh transport bundle
+// for the browser with no Node built-ins and no external imports.
+for (const [name, entry] of [
+  ["index.mjs (Server + Agent)", "../index.mjs"],
+  ["transports/browsermesh.mjs", "../transports/browsermesh.mjs"],
+]) {
+  test(`${name} bundles for the browser without Node built-ins`, async () => {
+    const path = fileURLToPath(new URL(entry, import.meta.url));
+    const result = await build({
+      stdin: { contents: `export * from ${JSON.stringify(path)};`, resolveDir: process.cwd() },
+      bundle: true,
+      write: false,
+      metafile: true,
+      format: "esm",
+      platform: "browser",
+      logLevel: "silent",
+    });
+    const imports = Object.values(result.metafile.outputs).flatMap((o) => o.imports.map((i) => i.path));
+    assert.deepStrictEqual(imports, []);
+    assert.ok(!/node:/.test(result.outputFiles[0].text));
+  });
+}
+
+test("the browser Emitter matches the EventEmitter behaviour dialback relies on", async () => {
+  const { default: Emitter } = await import("../util/emitter.mjs");
+  const { default: NodeEmitter } = await import("../util/emitter.node.mjs");
+  for (const E of [Emitter, NodeEmitter]) {
+    const e = new E();
+    const seen = [];
+    e.on("x", (v) => seen.push(["on", v]));
+    e.once("x", (v) => seen.push(["once", v]));
+    assert.strictEqual(e.emit("x", 1), true);
+    assert.strictEqual(e.emit("x", 2), true);
+    assert.deepStrictEqual(seen, [["on", 1], ["once", 1], ["on", 2]]);
+    const fn = () => seen.push("gone");
+    e.on("y", fn);
+    e.off("y", fn);
+    assert.strictEqual(e.emit("y"), false);
+    assert.throws(() => e.emit("error", new Error("boom")), /boom/);
+    e.on("error", () => {});
+    assert.doesNotThrow(() => e.emit("error", new Error("handled")));
+  }
+});
