@@ -1,6 +1,6 @@
 {
   "name": "@johnhenry/dialback",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Reverse proxy HTTP requests over web sockets -- an agent dials out, the server dials back through that connection to reach it",
   "main": "index.mjs",
   "type": "module",
@@ -58,7 +58,7 @@
   },
   "peerDependencies": {
     "@johnhenry/browsermesh-netway": ">=0.0.1",
-    "@johnhenry/browsermesh-primitives": ">=0.0.1"
+    "@johnhenry/browsermesh-primitives": ">=0.2.0 <1.0.0"
   },
   "peerDependenciesMeta": {
     "@johnhenry/browsermesh-netway": {
@@ -70,7 +70,7 @@
   },
   "devDependencies": {
     "@johnhenry/browsermesh-netway": "^0.0.1",
-    "@johnhenry/browsermesh-primitives": "^0.0.1",
+    "@johnhenry/browsermesh-primitives": "^0.2.0",
     "@types/node": "18.16.19"
   }
 }
