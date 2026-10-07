@@ -32,3 +32,6 @@ jobs:
           node-version: 22
       - run: npm ci
       - run: npm run test:deno
+
+  workflow-lint:
+    uses: johnhenry/workflows/.github/workflows/workflow-lint.yml@v1
