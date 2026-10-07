@@ -1,21 +1,13 @@
 name: Publish to npm
 
+# Publish model: main is the release branch. A push to main publishes only if
+# package.json's version isn't on npm yet (otherwise a clean no-op), then tags
+# v<version> and creates a GitHub Release. See johnhenry/workflows' README.
 on:
-  # Single publish trigger: the version tag. `gh release create` and the
-  # GitHub UI both create this tag, so every release still publishes, and so
-  # does a plain `git tag vX.Y.Z && git push --tags`. The `release: published`
-  # event is deliberately NOT used: johnhenry/workflows' README documents a
-  # real case (fileable v0.0.2, 2026-09-22) where that event was silently
-  # dropped for a job whose body is `uses: <external-repo>/...@v1`. The tag
-  # push has no such race, so one trigger is enough.
   push:
-    tags:
-      - "v*"
+    branches: [main]
   workflow_dispatch: {}
 
-# Queue, never cancel, publish runs for the same ref (a re-pushed tag or a
-# manual dispatch while a run is in flight): the reusable workflow's
-# `npm view` pre-flight makes a queued second run a clean no-op.
 concurrency:
   group: publish-${{ github.ref }}
   cancel-in-progress: false
@@ -23,9 +15,8 @@ concurrency:
 jobs:
   publish:
     permissions:
-      contents: read
-      id-token: write # required by the reusable workflow's provenance step --
-        # see johnhenry/workflows' README for why this must be declared here too.
+      contents: write # tag + GitHub Release by-product of npm-publish.yml
+      id-token: write # npm provenance
     uses: johnhenry/workflows/.github/workflows/npm-publish.yml@v1
     with:
       node-version: "26"
