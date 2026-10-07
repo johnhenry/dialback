@@ -204,6 +204,84 @@ test("identity handshake (handshake.mjs, direct)", { skip: !hasWebCryptoEd25519 
     await assert.rejects(() => challengePromise, /invalid signature/);
     listener.close();
   });
+
+  // Regression for johnhenry/dialback#12: the handshake called
+  // PodIdentity.verify(publicKey, nonce, signature), the pre-0.2.0 order,
+  // which browsermesh-primitives >= 0.2.0 rejects (WebCrypto order is
+  // (publicKey, signature, data)). These run the whole handshake against
+  // whatever primitives version is installed, with real generated keys.
+  await t.test("regression #12: full handshake over an in-memory socket pair learns the peer's podId", async () => {
+    const net = new VirtualNetwork();
+    const address = `mem://localhost:${port++}`;
+    const listenerIdentity = await PodIdentity.generate();
+    const peerIdentity = await PodIdentity.generate();
+
+    const listener = await net.listen(address);
+    const clientPromise = net.connect(address).then((socket) =>
+      respondToChallenge(socket, peerIdentity)
+    );
+    const serverSocket = await listener.accept();
+    const { podId } = await challengeConnectingPeer(serverSocket, listenerIdentity);
+
+    assert.strictEqual(podId, peerIdentity.podId);
+    assert.notStrictEqual(podId, listenerIdentity.podId);
+    const { reader } = await clientPromise;
+    assert.ok(reader, "connecting side resolves with its FrameReader once accepted");
+    listener.close();
+  });
+
+  await t.test("regression #12: a tampered signature (one flipped bit over the real nonce) is rejected", async () => {
+    const net = new VirtualNetwork();
+    const address = `mem://localhost:${port++}`;
+    const listenerIdentity = await PodIdentity.generate();
+    const peerIdentity = await PodIdentity.generate();
+
+    const listener = await net.listen(address);
+    const clientSocketPromise = net.connect(address);
+    const serverSocket = await listener.accept();
+    const clientSocket = await clientSocketPromise;
+
+    const challengePromise = challengeConnectingPeer(serverSocket, listenerIdentity);
+    const challenge = JSON.parse(new TextDecoder().decode(await clientSocket.read()));
+    const b64u = (bytes) =>
+      btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+    const nonce = Uint8Array.from(
+      atob(challenge.nonce.replace(/-/g, "+").replace(/_/g, "/")),
+      (c) => c.charCodeAt(0)
+    );
+    const signature = await peerIdentity.sign(nonce);
+    assert.strictEqual(signature.length, 64);
+    // Sanity: the untampered signature is valid under the canonical order,
+    // so the rejection below is attributable to the tampering alone.
+    assert.strictEqual(
+      await PodIdentity.verify(peerIdentity.keyPair.publicKey, signature, nonce),
+      true
+    );
+    const tampered = new Uint8Array(signature);
+    tampered[0] ^= 0x01;
+    const publicKeyBytes = new Uint8Array(
+      await crypto.subtle.exportKey("raw", peerIdentity.keyPair.publicKey)
+    );
+    await clientSocket.write(
+      encodeFrame(
+        JSON.stringify({
+          type: "response",
+          podId: peerIdentity.podId,
+          publicKey: b64u(publicKeyBytes),
+          signature: b64u(tampered),
+        })
+      )
+    );
+
+    await assert.rejects(() => challengePromise, /invalid signature/);
+    const ack = JSON.parse(new TextDecoder().decode(await clientSocket.read()));
+    assert.strictEqual(ack.type, "reject");
+    assert.strictEqual(ack.reason, "invalid signature");
+    listener.close();
+  });
 });
 
 test("createBrowsermeshTransport / acceptBrowsermeshConnections", { skip: !hasWebCryptoEd25519 && "requires WebCrypto Ed25519 (Node 18 has no global crypto)" }, async (t) => {

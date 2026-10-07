@@ -171,7 +171,7 @@ export async function challengeConnectingPeer(socket, identity, { timeoutMs = 10
   let verified;
   try {
     const signature = decodeBase64url(message.signature);
-    verified = await PodIdentity.verify(publicKey, nonce, signature);
+    verified = await PodIdentity.verify(publicKey, signature, nonce);
   } catch (cause) {
     await sendReject(socket, "malformed signature");
     throw new Error("Identity handshake failed: could not verify signature", { cause });

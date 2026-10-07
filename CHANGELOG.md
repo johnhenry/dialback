@@ -7,6 +7,30 @@ and this project will adhere to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-10-07
+
+### Fixed
+
+- **The identity handshake works against `@johnhenry/browsermesh-primitives` 0.2.0
+  again** (#12). `challengeConnectingPeer` called
+  `PodIdentity.verify(publicKey, nonce, signature)`, the pre-0.2.0 argument
+  order; primitives 0.2.0 switched to the WebCrypto order
+  `verify(publicKey, signature, data)` and throws on the old one, so every
+  handshake failed with "could not verify signature". It now calls
+  `PodIdentity.verify(publicKey, signature, nonce)`. This was the only
+  `verify` call site (`sign(nonce)` on the connecting side was already
+  order-independent).
+- The optional peer range for `@johnhenry/browsermesh-primitives` is now
+  `>=0.2.0 <1.0.0` (was `>=0.0.1`, which admitted versions where the old
+  order was the right one). The dev dependency used by the tests is `^0.2.0`.
+
+### Added
+
+- Regression tests in `test/browsermesh.test.mjs` that run the full
+  identity handshake over an in-memory socket pair with real
+  `PodIdentity.generate()` keys, asserting the learned `podId` matches and
+  that a one-bit-tampered signature is rejected.
+
 ### Changed
 
 - **`Server.listen()`'s inline Node `req`/`res` <-> Web `Request`/`Response`
