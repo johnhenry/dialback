@@ -1,6 +1,6 @@
 {
   "name": "@johnhenry/dialback",
-  "version": "0.0.7",
+  "version": "0.1.0",
   "description": "Reverse proxy HTTP requests over web sockets -- an agent dials out, the server dials back through that connection to reach it",
   "main": "index.mjs",
   "type": "module",
@@ -21,6 +21,14 @@
     "./handshake": {
       "types": "./types/handshake.d.ts",
       "default": "./transports/handshake.mjs"
+    },
+    "./server": {
+      "types": "./types/types.d.ts",
+      "default": "./server.mjs"
+    },
+    "./agent": {
+      "types": "./types/types.d.ts",
+      "default": "./agent.mjs"
     }
   },
   "publishConfig": {
@@ -93,6 +101,10 @@
     "#events": {
       "node": "./util/emitter.node.mjs",
       "default": "./util/emitter.mjs"
+    },
+    "#websocket": {
+      "node": "./util/websocket.node.mjs",
+      "default": "./util/websocket.mjs"
     }
   }
 }

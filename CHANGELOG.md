@@ -7,6 +7,24 @@ and this project will adhere to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-08
+
+### Added
+
+- **Browser-safe Agent (#6).** The default `Agent` transport is now the
+  platform `WebSocket` outside Node, resolved through a `#websocket` entry in
+  package.json `imports` (`ws` under the `node` condition, unchanged for Node
+  and Deno). A bundle of the root entry for the browser no longer contains
+  `ws`, and `new Agent("wss://...")` works in a page.
+- `./server` and `./agent` subpath exports.
+- `docs/adr/0001-netway-transport.md` (#2): netway stays an optional transport
+  (`./browsermesh`); the shared-secret WebSocket path remains the default.
+
+### Fixed
+
+- Agent reconnect dropped the `secret` (it called `createConnection(address)`),
+  so a reconnecting agent failed authentication.
+
 ## [0.0.7] - 2026-10-07
 
 ### Fixed
