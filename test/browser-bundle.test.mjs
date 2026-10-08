@@ -93,3 +93,35 @@ test("the browser Emitter matches the EventEmitter behaviour dialback relies on"
     assert.doesNotThrow(() => e.emit("error", new Error("handled")));
   }
 });
+
+// #6: the Agent's default transport must be the platform WebSocket in a
+// browser bundle, not the `ws` package (whose browser stub throws on use).
+test("browser bundle of index.mjs excludes `ws` and the Agent dials with the platform WebSocket", async () => {
+  const path = fileURLToPath(new URL("../index.mjs", import.meta.url));
+  const result = await build({
+    stdin: { contents: `export * from ${JSON.stringify(path)};`, resolveDir: process.cwd() },
+    bundle: true, write: false, metafile: true, format: "esm", platform: "browser", logLevel: "silent",
+  });
+  const inputs = Object.keys(result.metafile.inputs);
+  assert.ok(!inputs.some((i) => /node_modules\/ws\//.test(i)), `ws bundled: ${inputs.join(", ")}`);
+
+  const dialed = [];
+  class FakeWebSocket extends EventTarget {
+    constructor(url) { super(); dialed.push(url); this.sent = []; setTimeout(() => this.dispatchEvent(new Event("open")), 0); }
+    send(d) { this.sent.push(d); }
+    close() { this.dispatchEvent(new Event("close")); }
+  }
+  const prev = globalThis.WebSocket;
+  globalThis.WebSocket = FakeWebSocket;
+  try {
+    const url = "data:text/javascript;base64," + Buffer.from(result.outputFiles[0].text).toString("base64");
+    const { Agent } = await import(url);
+    const agent = new Agent("ws://example.test/x", { secret: "s", id: "a1" });
+    const conn = await agent.connection;
+    assert.deepStrictEqual(dialed, ["ws://example.test/x"]);
+    assert.strictEqual(JSON.parse(conn.sent[0]).kind, "agent");
+    await agent.close();
+  } finally {
+    globalThis.WebSocket = prev;
+  }
+});

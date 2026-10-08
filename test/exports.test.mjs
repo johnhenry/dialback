@@ -49,3 +49,10 @@ test("handshake and browsermesh subpaths declare types", () => {
     assert.ok(readFileSync(file, "utf8").includes("challengeConnectingPeer"), key);
   }
 });
+
+test("./server and ./agent subpaths resolve", async () => {
+  assert.ok(import.meta.resolve("@johnhenry/dialback/server").endsWith("/server.mjs"));
+  assert.ok(import.meta.resolve("@johnhenry/dialback/agent").endsWith("/agent.mjs"));
+  assert.strictEqual(typeof (await import("@johnhenry/dialback/server")).Server, "function");
+  assert.strictEqual(typeof (await import("@johnhenry/dialback/agent")).Agent, "function");
+});

@@ -1,4 +1,5 @@
-import WebSocket from "ws";
+// `ws` under the `node` condition, the platform WebSocket elsewhere (see package.json "imports").
+import WebSocket from "#websocket";
 // Real `node:events` under Node/Deno; a tiny emitter elsewhere (see package.json "imports").
 import EventEmitter from "#events";
 import {
@@ -255,7 +256,7 @@ const Agent = class extends EventEmitter {
             await new Promise((success) =>
               setTimeout(success, this.#reconnect)
             );
-            success(this.createConnection(address));
+            success(this.createConnection(address, secret));
           });
         }
       };
@@ -285,8 +286,9 @@ const Agent = class extends EventEmitter {
 
       const connection = new WebSocket(address);
       const handshaker = () => this.#runHandshake(connection, secret, success);
-      connection.on("open", handshaker);
-      connection.on("close", closer);
+      // addEventListener exists on both `ws` and the platform WebSocket.
+      connection.addEventListener("open", handshaker);
+      connection.addEventListener("close", closer);
     });
   }
 
